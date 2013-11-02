@@ -1,0 +1,30 @@
+2013.10.31, Version 0.0.2 (Alpha)
+
+- transcoder.js
+* Renamed: "configs" to "config"
+* Renamed: "streams" to "mounts" and "stream()" to "mount()"
+* Added: statuspage function from dispatcher.js
+* Added: jingle/advertisement function
+* Renamed: jingle/advertisement function caller from "adafterdisconnect" to "jingleafterdisconnect"
+* Renamed: "adsources" to "jingles"
+* Bugfix: mounts[mountpoint].analyzeduration wasn't passed correctly
+* Changed: the uniqid-generation behavior from "uniqid('', true)" to "sourcename+'_'+uniqid('', true)"
+* Removed: several log() calls, because we don't need debugging anymore
+* Bugfix: http-server now checks, whetever the request method is GET and otherwise drops the connection instantly
+* Removed: old comented out test space
+
+- dispatcher.js
+* Removed: useless 'drain' listener (Usually for testing out things)
+* Added: mounts parameter: mounts[mountname].notinlistenpls with witch you can decide whetever this mount should not be written into the stream.pls
+* Bugfix: makemeta will now be called by the clienting function with the check-interval specified by the transcoder's metainterval
+* Bugfix: makemeta will now be called by an interval and only requests and converts the metaurl data to meta information, when icy-metaint is set correct
+* Bugfix: icy-metaint header has been passed with type 'string' instead of 'number'. Now calling parseInt() on it
+* Removed: old comented out test space
+
+2013.10.30, Version 0.0.1 (preAlpha)
+
+- transcoder.js
+* Initial commit
+
+- dispatcher.js
+* Initial commit

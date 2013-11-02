@@ -1,23 +1,13 @@
 #!/usr/local/bin/node
 
-var mounts = {
-	'/main-192': {
-		url: 'http://localhost:7777/main-192',
-		metaurl: 'http://localhost/meta.php?stream=main-192',
-		maxclients: 10
-	},
-	'/main-128': {
-		url: 'http://localhost:7777/main-128',
-		metaurl: 'http://localhost/meta.php?stream=main-128',
-		maxclients: 10
-	}
-};
+// Configuration (Modify these to your needs)
 var config = {
+	version: '0.0.2',
 	ip: '0.0.0.0',
 	port: 8000,
 	maxclients: 10,
 	preventclientoverflow: true,
-	prebuffertime: 10000,
+	prebuffertime: 60000,
 	servecrossdomainxml: true,
 	servelistenpls: true,
 	statuspage: {
@@ -30,18 +20,39 @@ var config = {
 			path: '/status?json',
 			allowedips: ['10.135.0.2']
 		},
-		inspect: {
+		inspect: { // Only call this url if you really need to, because the processing of this call takes a very very very long time and often (nearly everytime) blocks the entire process until the inspection data is completely transmitted to the client!!!
 			path: '/status?inspect',
 			allowedips: ['10.135.0.1'],
 			options: {
 				'showHidden': true,
 				'depth': null
 			}
+		},
+		mountslist: {
+			path: '/mountslist',
+			allowedips: ['10.135.0.3'],
 		}
 	}
 };
+var mounts = {
+	'/main-192': {
+		url: 'http://localhost:7777/main-192',
+		metaurl: 'http://localhost/meta.php?stream=main-192',
+		maxclients: 10
+	},
+	'/main-128': {
+		url: 'http://localhost:7777/main-128',
+		metaurl: 'http://localhost/meta.php?stream=main-128',
+		maxclients: 10
+	},
+	'/main-aac': {
+		url: 'http://localhost:7777/main-aac',
+		metaurl: 'http://localhost/meta.php?stream=main-aac',
+		maxclients: 10
+	}
+};
 
-// Libraries and functions
+
 var http = require('http');
 var in_array = function(needle,haystack,argStrict){var key='',strict=!!argStrict;if(strict){for(key in haystack){if(haystack[key]===needle){return true;}}}else{for(key in haystack){if(haystack[key]==needle){return true;}}}return false;}
 var os = require('os');
@@ -67,12 +78,9 @@ var makemeta = function(metadata) {
 };
 
 var server = http.createServer(function(req, res) {
-	req.on('drain', function() {
-		log("drained");
-	});
 	if (req.method.toUpperCase() !== 'GET') {
 		log(req.socket.remoteAddress+':'+req.socket.remotePort+' tried method '+req.method.toUpperCase());
-		req.socket.destroy();
+		res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>405 Method Not Allowed</title></head><body><h1>Method Not Allowed</h1><p>The requested method '+req.method.toUpperCase()+' is not allowed on this server.</p><hr><address>nodecast Server at '+req.socket.localAddress+' Port '+req.socket.localPort+'</address></body></html>');
 	} else if (req.url === '/crossdomain.xml' && config.servecrossdomainxml) {
 		res.writeHead(200, {
 			'content-type': 'text/xml',
@@ -87,11 +95,13 @@ var server = http.createServer(function(req, res) {
 		res.write('[playlist]\n');
 		res.write('NumberOfEntries='+Object.keys(mounts).length+'\n\n');
 		var filenum = 0;
-		Object.keys(mounts).forEach(function(mountname) {
-			filenum++;
-			res.write('File'+filenum+'=http://'+req.headers.host+'/'+mountname+'\n');
-			res.write('Title'+filenum+'='+mounts[mountname]._.headers['icy-name']+'\n');
-			res.write('Length'+filenum+'=-1');
+		Object.keys(mounts).forEach(function(mountpoint) {
+			if(!mounts[mountpoint].notinlistenpls) {
+				filenum++;
+				res.write('File'+filenum+'=http://'+req.headers.host+mountpoint+'\n');
+				res.write('Title'+filenum+'='+mounts[mountpoint]._.headers['icy-name']+'\n');
+				res.write('Length'+filenum+'=-1\n');
+			};
 		});
 		res.end();
 	} else if(config.statuspage && config.statuspage.readable && config.statuspage.readable.path && req.url === config.statuspage.readable.path && ((in_array('*', config.statuspage.readable.allowedips) || in_array('0.0.0.0', config.statuspage.readable.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.readable.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
@@ -104,12 +114,12 @@ var server = http.createServer(function(req, res) {
 		var prebuffersize = 0;
 		var bytesrcvd = 0;
 		var bytessent = 0;
-		Object.keys(mounts).forEach(function(mountname) {
-			listener += Object.keys(mounts[mountname]._.clients).length;
-			bytesrcvd += mounts[mountname]._.bytesrcvd;
-			bytessent += mounts[mountname]._.bytessent;
-			Object.keys(mounts[mountname]._.prebuffers).forEach(function(prebufferkey) {
-				prebuffersize += mounts[mountname]._.prebuffers[prebufferkey].length;
+		Object.keys(mounts).forEach(function(mountpoint) {
+			listener += Object.keys(mounts[mountpoint]._.clients).length;
+			bytesrcvd += mounts[mountpoint]._.bytesrcvd;
+			bytessent += mounts[mountpoint]._.bytessent;
+			Object.keys(mounts[mountpoint]._.prebuffers).forEach(function(prebufferkey) {
+				prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
 			});
 		});
 		var systemload = Math.round(os.loadavg()[0]*100)+'% ('+os.loadavg().join(' ')+')';
@@ -124,10 +134,15 @@ var server = http.createServer(function(req, res) {
 			'Memory heap: '+memoryheap+'\n'+
 			'Prebuffer size: '+prebuffersize+'\n'
 		);
-		Object.keys(mounts).forEach(function(mountname) {
-			res.write('Mount '+mountname+'\n');
-			Object.keys(mounts[mountname]._.clients).forEach(function(clientid) {
-				res.write(' Client '+clientid+' '+mounts[mountname]._.clients[clientid].req.socket.remoteAddress+':'+mounts[mountname]._.clients[clientid].req.socket.remotePort+' '+mounts[mountname]._.clients[clientid].status.sent+' '+mounts[mountname]._.clients[clientid].status.overflowed+'\n');
+		Object.keys(mounts).forEach(function(mountpoint) {
+			res.write('Mount '+mountpoint+'\n');
+			var prebuffers = 0;
+			Object.keys(mounts[mountpoint]._.prebuffers).forEach(function(prebufferkey) {
+				prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
+			});
+			res.write(' Prebuffer '+prebuffersize+' ('+Object.keys(mounts[mountpoint]._.prebuffers).length+')\n');
+			Object.keys(mounts[mountpoint]._.clients).forEach(function(clientid) {
+				res.write(' Client '+clientid+' '+mounts[mountpoint]._.clients[clientid].req.socket.remoteAddress+':'+mounts[mountpoint]._.clients[clientid].req.socket.remotePort+' '+mounts[mountpoint]._.clients[clientid].status.sent+' '+mounts[mountpoint]._.clients[clientid].status.overflowed+'\n');
 			});
 		});
 		res.end();
@@ -136,161 +151,172 @@ var server = http.createServer(function(req, res) {
 			'content-type': 'application/json',
 			'connection': 'close'
 		});
-		res.end(JSON.stringify({'mounts':mounts,'config':config}));
+		res.end(JSON.stringify({'config':config,'mounts':mounts}));
 	} else if(config.statuspage && config.statuspage.inspect && config.statuspage.inspect.path && req.url === config.statuspage.inspect.path && ((in_array('*', config.statuspage.inspect.allowedips) || in_array('0.0.0.0', config.statuspage.inspect.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.inspect.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
 		res.writeHead(200, {
 			'content-type': 'application/json',
 			'connection': 'close'
 		});
-		res.end(util.inspect({'mounts':mounts,'config':config}, config.statuspage.inspect.options));
-	} else if(typeof mounts[req.url] === 'object' && mounts[req.url]._ && Object.keys(mounts[req.url]._.clients).length < mounts[req.url].maxclients && Object.keys(mounts[req.url]._.clients).length < config.maxclients) {
-		var clientrealheaders = mounts[req.url]._.headers;
-		if(req.headers['icy-metadata']) {
-			var clientmetaint = clientrealheaders['icy-metaint'];
-		} else {
-			var clientmetaint = 0;
-			delete clientrealheaders['icy-metaint'];
-		};
-		res.sendDate = false;
-		res.writeHead(200, clientrealheaders);
-		var clientid = uniqid('', true);
-		var clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
-		var resprebuffers = mounts[req.url]._.prebuffers;
-		Object.keys(resprebuffers).forEach(function(resprebufferkey) {
-			var chunk = resprebuffers[resprebufferkey];
-			if(clientstatus.metaint && clientstatus.metaintcycle+chunk.length > clientstatus.metaint) {
-				var before = chunk.slice(0, clientstatus.metaint-clientstatus.metaintcycle);
-				res.write(before);
-				res.write(mounts[req.url]._.meta);
-				var after = chunk.slice(clientstatus.metaint-clientstatus.metaintcycle, chunk.length);
-				res.write(after);
-				clientstatus.metaintcycle = after.length;
-				clientstatus.sent += mounts[req.url]._.meta.length;
-				mounts[req.url]._.bytessent += mounts[req.url]._.meta.length;
-			} else {
-				res.write(chunk);
-				clientstatus.metaintcycle += chunk.length;
+		res.end(util.inspect({'config':config,'mounts':mounts}, config.statuspage.inspect.options));
+	} else if(config.statuspage && config.statuspage.mountslist && config.statuspage.mountslist.path && req.url === config.statuspage.mountslist.path && ((in_array('*', config.statuspage.mountslist.allowedips) || in_array('0.0.0.0', config.statuspage.mountslist.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.mountslist.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
+		res.writeHead(200, {
+			'content-type': 'application/json',
+			'connection': 'close'
+		});
+		var mountslist = [];
+		Object.keys(mounts).forEach(function(mountname) {
+			mountslist.push(mountname);
+		});
+		res.end(JSON.stringify(mountslist));
+	} else if(mounts[req.url] && mounts[req.url]._) {
+		var sumclients = 0;
+		Object.keys(mounts).forEach(function(mountpoint) {
+			if(mounts[mountpoint]._ && mounts[mountpoint]._.clients) {
+				sumclients += Object.keys(mounts[mountpoint]._.clients).length;
 			};
-			clientstatus.sent += chunk.length;
-			mounts[req.url]._.bytessent += chunk.length;
 		});
-		mounts[req.url]._.clients[clientid] = {'status': clientstatus, 'req': req, 'res': res};
-		res.once('close', function() {
-			delete mounts[req.url]._.clients[clientid];
-		});
+		if((!config.maxclients || config.maxclients > sumclients) && (!mounts[req.url].maxclients || mounts[req.url].maxclients > Object.keys(mounts[req.url]._.clients).length)) {
+			var clientrealheaders = mounts[req.url]._.headers;
+			if(req.headers['icy-metadata']) {
+				var clientmetaint = clientrealheaders['icy-metaint'];
+			} else {
+				var clientmetaint = 0;
+				delete clientrealheaders['icy-metaint'];
+			};
+			res.sendDate = false;
+			res.writeHead(200, clientrealheaders);
+			var clientid = uniqid('', true);
+			var clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
+			var resprebuffers = mounts[req.url]._.prebuffers;
+			Object.keys(resprebuffers).forEach(function(resprebufferkey) {
+				var chunk = resprebuffers[resprebufferkey];
+				if(clientstatus.metaint && clientstatus.metaintcycle+chunk.length > clientstatus.metaint) {
+					var before = chunk.slice(0, clientstatus.metaint-clientstatus.metaintcycle);
+					res.write(before);
+					res.write(mounts[req.url]._.meta);
+					var after = chunk.slice(clientstatus.metaint-clientstatus.metaintcycle, chunk.length);
+					res.write(after);
+					clientstatus.metaintcycle = after.length;
+					clientstatus.sent += mounts[req.url]._.meta.length;
+					mounts[req.url]._.bytessent += mounts[req.url]._.meta.length;
+				} else {
+					res.write(chunk);
+					clientstatus.metaintcycle += chunk.length;
+				};
+				clientstatus.sent += chunk.length;
+				mounts[req.url]._.bytessent += chunk.length;
+			});
+			mounts[req.url]._.clients[clientid] = {'status': clientstatus, 'req': req, 'res': res};
+			res.once('close', function() {
+				delete mounts[req.url]._.clients[clientid];
+			});
+		} else {
+			res.end('No slot available');
+		};
 	} else {
-		req.socket.destroy();
+		res.end('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>404 Not Found</title></head><body><h1>Not Found</h1><p>The requested URL '+req.url+' was not found on this server.</p><hr><address>nodecast Server at '+req.socket.localAddress+' Port '+req.socket.localPort+'</address></body></html>');
 	};
 });
 server.listen(config.port, config.ip);
 
-var clienting = function(mountname) {
-	log("Spawned clienting("+mountname+")");
-	if(typeof mounts[mountname].prebuffertime === 'undefined') {
-		if(typeof config.prebuffertime === 'undefined') {
-			mounts[mountname].prebuffertime = false;
+var clienting = function(mountpoint) {
+	log('Spawned clienting('+mountpoint+')');
+	if(!mounts[mountpoint].prebuffertime) {
+		if(!config.prebuffertime) {
+			mounts[mountpoint].prebuffertime = false;
 		} else {
-			mounts[mountname].prebuffertime = config.prebuffertime;
+			mounts[mountpoint].prebuffertime = config.prebuffertime;
 		};
 	};
-	if(mounts[mountname].prebuffertime === 0) {
-		mounts[mountname].prebuffertime = false;
+	if(mounts[mountpoint].prebuffertime === 0) {
+		mounts[mountpoint].prebuffertime = false;
 	};
-	var req = http.get(mounts[mountname].url, function(res) {
-		if(!mounts[mountname]._) {
-			mounts[mountname]._ = {};
-			mounts[mountname]._.headers = {};
-			mounts[mountname]._.clients = {};
-			mounts[mountname]._.prebuffers = [];
-			mounts[mountname]._.bytesrcvd = 0;
-			mounts[mountname]._.bytessent = 0;
-			mounts[mountname]._.meta = new Buffer([0]);
+	http.get(mounts[mountpoint].url, function(res) {
+		if(!mounts[mountpoint]._) {
+			mounts[mountpoint]._ = {};
+			mounts[mountpoint]._.headers = {};
+			mounts[mountpoint]._.clients = {};
+			mounts[mountpoint]._.prebuffers = [];
+			mounts[mountpoint]._.bytesrcvd = 0;
+			mounts[mountpoint]._.bytessent = 0;
+			mounts[mountpoint]._.meta = new Buffer([0]);
 		};
-		mounts[mountname]._.headers = res.headers;
+		mounts[mountpoint]._.headers = res.headers;
+		Object.keys(mounts[mountpoint]._.headers).forEach(function(headerkey) {
+			if(typeof mounts[mountpoint]._.headers[headerkey] === 'string' && parseInt(mounts[mountpoint]._.headers[headerkey])+'' === mounts[mountpoint]._.headers[headerkey] && parseInt(mounts[mountpoint]._.headers[headerkey])+1-1 === parseInt(mounts[mountpoint]._.headers[headerkey])) {
+				mounts[mountpoint]._.headers[headerkey] = parseInt(mounts[mountpoint]._.headers[headerkey]);
+			};
+		});
 		res.on('data', function(chunk) {
-			Object.keys(mounts[mountname]._.clients).forEach(function(clientid) {
-				if(!mounts[mountname]._.clients[clientid].status.overflowed && mounts[mountname]._.clients[clientid].res.writable) {
-					if(mounts[mountname]._.clients[clientid].status.metaint && mounts[mountname]._.clients[clientid].status.metaintcycle+chunk.length > mounts[mountname]._.clients[clientid].status.metaint) {
-						var before = chunk.slice(0, mounts[mountname]._.clients[clientid].status.metaint-mounts[mountname]._.clients[clientid].status.metaintcycle);
-						mounts[mountname]._.clients[clientid].res.write(before);
-						mounts[mountname]._.clients[clientid].res.write(mounts[mountname]._.meta);
-						var after = chunk.slice(mounts[mountname]._.clients[clientid].status.metaint-mounts[mountname]._.clients[clientid].status.metaintcycle, chunk.length);
-						mounts[mountname]._.clients[clientid].res.write(after);
-						mounts[mountname]._.clients[clientid].status.metaintcycle = after.length;
-						mounts[mountname]._.clients[clientid].status.sent += mounts[mountname]._.meta.length;
-						mounts[mountname]._.bytessent += mounts[mountname]._.meta.length;
+			Object.keys(mounts[mountpoint]._.clients).forEach(function(clientid) {
+				if(!mounts[mountpoint]._.clients[clientid].status.overflowed && mounts[mountpoint]._.clients[clientid].res.writable) {
+					if(mounts[mountpoint]._.clients[clientid].status.metaint && mounts[mountpoint]._.clients[clientid].status.metaintcycle+chunk.length > mounts[mountpoint]._.clients[clientid].status.metaint) {
+						var before = chunk.slice(0, mounts[mountpoint]._.clients[clientid].status.metaint-mounts[mountpoint]._.clients[clientid].status.metaintcycle);
+						mounts[mountpoint]._.clients[clientid].res.write(before);
+						mounts[mountpoint]._.clients[clientid].res.write(mounts[mountpoint]._.meta);
+						var after = chunk.slice(mounts[mountpoint]._.clients[clientid].status.metaint-mounts[mountpoint]._.clients[clientid].status.metaintcycle, chunk.length);
+						mounts[mountpoint]._.clients[clientid].res.write(after);
+						mounts[mountpoint]._.clients[clientid].status.metaintcycle = after.length;
+						mounts[mountpoint]._.clients[clientid].status.sent += mounts[mountpoint]._.meta.length;
+						mounts[mountpoint]._.bytessent += mounts[mountpoint]._.meta.length;
 					} else {
-						if(mounts[mountname]._.clients[clientid].status.overflowed = !mounts[mountname]._.clients[clientid].res.write(chunk) && mounts[mountname].preventclientoverflow) {
-							mounts[mountname]._.clients[clientid].res.once('drain', function() {
-								mounts[mountname]._.clients[clientid].status.overflowed = false;
+						if(mounts[mountpoint]._.clients[clientid].status.overflowed = !mounts[mountpoint]._.clients[clientid].res.write(chunk) && mounts[mountpoint].preventclientoverflow) {
+							mounts[mountpoint]._.clients[clientid].res.once('drain', function() {
+								mounts[mountpoint]._.clients[clientid].status.overflowed = false;
 							});
 						};
-						mounts[mountname]._.clients[clientid].status.metaintcycle += chunk.length;
+						mounts[mountpoint]._.clients[clientid].status.metaintcycle += chunk.length;
 					};
-					mounts[mountname]._.clients[clientid].status.sent += chunk.length;
-					mounts[mountname]._.bytessent += chunk.length;
+					mounts[mountpoint]._.clients[clientid].status.sent += chunk.length;
+					mounts[mountpoint]._.bytessent += chunk.length;
 				};
 			});
-			if(mounts[mountname].prebuffertime) {
-				mounts[mountname]._.prebuffers.push(chunk);
+			if(mounts[mountpoint].prebuffertime) {
+				mounts[mountpoint]._.prebuffers.push(chunk);
 				setTimeout(function() {
-					mounts[mountname]._.prebuffers.shift();
-				}, mounts[mountname].prebuffertime);
+					mounts[mountpoint]._.prebuffers.shift();
+				}, mounts[mountpoint].prebuffertime);
 			};
 		});
 		res.once('close', function(chunk) {
 			setTimeout(function() {
-				clienting(mountname);
+				clienting(mountpoint);
 			}, 100);
 		});
-	});
-	req.once('error', function(e) {
+	}).once('error', function(e) {
 		setTimeout(function() {
-			clienting(mountname);
+			clienting(mountpoint);
 		}, 100);
-		log(mountname+' '+e);
+		log(mountpoint+' '+e);
 	});
-	req.end();
 };
 
-Object.keys(mounts).forEach(function(mountname) {
-	clienting(mountname);
+Object.keys(mounts).forEach(function(mountpoint) {
+	clienting(mountpoint);
 });
 
 setInterval(function() {
-	Object.keys(mounts).forEach(function(mountname) {
-		mounts[mountname]._.meta = makemeta(Math.random()+' '+Math.random());
+	Object.keys(mounts).forEach(function(mountpoint) {
+		if(mounts[mountpoint]._ && mounts[mountpoint]._.headers['icy-metaint'] && typeof mounts[mountpoint]._.headers['icy-metaint'] === 'number' && mounts[mountpoint]._.headers['icy-metaint'] > 0 && Math.floor(mounts[mountpoint]._.headers['icy-metaint']) === mounts[mountpoint]._.headers['icy-metaint']) {
+			var metaurl = false;
+			if(typeof mounts[mountpoint].metaurl === 'string' && mounts[mountpoint].metaurl.trim() !== '') {
+				metaurl = mounts[mountpoint].metaurl;
+			} else if(typeof config.metaurl === 'string' && config.metaurl.trim() !== '') {
+				metaurl = config.metaurl;
+			};
+			if(metaurl) {
+				var metareqdata = '';
+				http.get(metaurl, function(res) {
+					res.on('data', function(chunk) {
+						metareqdata += chunk;
+					});
+					res.on('end', function() {
+						mounts[mountpoint]._.meta = makemeta(metareqdata);
+					});
+				}).on('error', function(e) {
+					log('getting meta-info for '+mountpoint+' from '+mounts[mountpoint].metaurl+': '+e);
+				});
+			};
+		};
 	});
 }, 1000);
-
-/*/////////////////////////////////////////////////////////////////////
-var stream = false;
-var meta = new Buffer([0]);
-
-var dostream = function() {
-	var req = http.get(transcoderurl, function(res) {
-		res.on('data', function(chunk) {
-			prebuffer.push(chunk);
-			setTimeout(function() {
-				prebuffer.shift();
-			}, prebuffertime);
-			laststreampassthrough = new Date();
-			bytesrcvd += chunk.length;
-		});
-		res.once('close', function(chunk) {
-			server.close();
-			setTimeout(function() {
-				dostream();
-			}, 100);
-		});
-	});
-	req.once('error', function(e) {
-		setTimeout(function() {
-			dostream();
-		}, 100);
-		log(e);
-	});
-	req.end();
-};
-dostream();
-//*/
