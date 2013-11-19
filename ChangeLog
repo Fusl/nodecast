@@ -1,3 +1,36 @@
+2013.11.19, Version 0.0.4 (Beta)
+
+- transcoder.js
+* Better indentation and syntax
+* Added: source callback functions
+
+- dispatcher.js
+* Better indentation and syntax
+
+- server.js
+* Still a testarea, don't use yet!
+
+- playlist.js
+* Better indentation and syntax
+
+2013.11.13, Version 0.0.3 (Alpha)
+
+- transcoder.js
+* Added: configuration variable, when to play the jingle at the specified event (if event is emitted AND atHours has the current hour in the list, then play the jingle)
+* Removed: status output function completely from code (status output != log output)
+* Bugfix: if the mountpoint hasn't been setup completely and a jingle-event occured, this made the process crash and is fixed now
+* Bugfix: Weird handling of priority for a source stream not given is fixed now (checking all source and jingle streams for an undefined priority and setting priority to 0)
+* Bugfix: Server did not use global configuration variables, fixed now
+* Bugfix: Right handling of desynced and unsyncdiscard decision is fixed now
+
+- dispatcher.js
+
+- server.js
+* Initial commit
+
+- playlist.js
+* Initial commit
+
 2013.10.31, Version 0.0.2 (Alpha)
 
 - transcoder.js

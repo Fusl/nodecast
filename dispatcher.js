@@ -1,192 +1,266 @@
 #!/usr/local/bin/node
 
+"use strict";
+
 // Configuration (Modify these to your needs)
 var config = {
-	version: '0.0.2',
-	ip: '0.0.0.0',
-	port: 8000,
-	maxclients: 10,
-	preventclientoverflow: true,
-	prebuffertime: 60000,
-	servecrossdomainxml: true,
-	servelistenpls: true,
-	statuspage: {
-		allowedips: ['127.0.0.1'],
-		readable: {
-			path: '/status',
-			allowedips: ['10.135.192.26']
-		},
-		parseable: {
-			path: '/status?json',
-			allowedips: ['10.135.0.2']
-		},
-		inspect: { // Only call this url if you really need to, because the processing of this call takes a very very very long time and often (nearly everytime) blocks the entire process until the inspection data is completely transmitted to the client!!!
-			path: '/status?inspect',
-			allowedips: ['10.135.0.1'],
-			options: {
-				'showHidden': true,
-				'depth': null
-			}
-		},
-		mountslist: {
-			path: '/mountslist',
-			allowedips: ['10.135.0.3'],
-		}
-	}
+    version: '0.0.3',
+    ip: '0.0.0.0',
+    port: 8000,
+    maxclients: 10,
+    preventclientoverflow: true,
+    prebuffertime: 60000,
+    servecrossdomainxml: true,
+    servelistenpls: true,
+    statuspage: {
+        allowedips: ['127.0.0.1'],
+        readable: {
+            path: '/status',
+            allowedips: ['10.135.192.26']
+        },
+        parseable: {
+            path: '/status?json',
+            allowedips: ['10.135.0.2']
+        },
+        inspect: {
+            path: '/status?inspect',
+            allowedips: ['10.135.0.1'],
+            options: {
+                'showHidden': true,
+                'depth': null
+            }
+        },
+        mountslist: {
+            path: '/mountslist',
+            allowedips: ['10.135.0.3']
+        }
+    }
+},
+    mounts = {
+        '/main-192.mp3': {
+            url: 'http://localhost:7777/main-192.mp3',
+            metaurl: 'http://localhost/meta.php?stream=main-192',
+            maxclients: 10
+        },
+        '/main-128.mp3': {
+            url: 'http://localhost:7777/main-128.mp3',
+            metaurl: 'http://localhost/meta.php?stream=main-128',
+            maxclients: 10
+        },
+        '/main-128.aac': {
+            url: 'http://localhost:7777/main-128.aac',
+            metaurl: 'http://localhost/meta.php?stream=main-aac',
+            maxclients: 10
+        },
+        '/main-64.aac': {
+            url: 'http://localhost:7777/main-64.aac',
+            metaurl: 'http://localhost/meta.php?stream=main-64.aac',
+            maxclients: 10
+        }
+    },
+    http = require('http'),
+    in_array = function (needle, haystack) {
+        var i = false;
+        if (haystack instanceof Array) {
+            for (i = 0; i < haystack.length; i++) {
+                if (haystack[i] === needle) {
+                    return true;
+                }
+            }
+        } else {
+            for (i in haystack) {
+                if (haystack[i] === needle) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    },
+    os = require('os'),
+    icystring = function (obj) {var s = []; Object.keys(obj).forEach(function (key) {s.push(key); s.push('=\''); s.push(obj[key]); s.push('\';'); }); return s.join(''); },
+    util = require('util'),
+    log = function (msg) {
+        if (typeof msg === 'undefined') {
+            return;
+        }
+        util.log(msg);
+    },
+    uniqid = function () {
+        return Math.random().toString(16) + Math.random().toString(16);
+    };
+
+var makemeta = function (metadata) {
+    if (typeof metadata === 'string') {
+        metadata = {StreamTitle: metadata};
+    } else if (!metadata || typeof metadata === 'object') {
+        return '';
+    }
+    var string = icystring(metadata),
+        length = Buffer.byteLength(string),
+        buflen = Math.ceil(length / 16),
+        buffer = new Buffer(buflen * 16 + 1),
+        written = buffer.write(string, 1);
+    buffer[0] = buflen;
+    buffer.fill(0, written + 1);
+    return buffer;
 };
-var mounts = {
-	'/main-192': {
-		url: 'http://localhost:7777/main-192',
-		metaurl: 'http://localhost/meta.php?stream=main-192',
-		maxclients: 10
-	},
-	'/main-128': {
-		url: 'http://localhost:7777/main-128',
-		metaurl: 'http://localhost/meta.php?stream=main-128',
-		maxclients: 10
-	},
-	'/main-aac': {
-		url: 'http://localhost:7777/main-aac',
-		metaurl: 'http://localhost/meta.php?stream=main-aac',
-		maxclients: 10
-	}
-};
 
-
-var http = require('http');
-var in_array = function(needle,haystack,argStrict){var key='',strict=!!argStrict;if(strict){for(key in haystack){if(haystack[key]===needle){return true;}}}else{for(key in haystack){if(haystack[key]==needle){return true;}}}return false;}
-var os = require('os');
-var icystring = function(obj){var s=[];Object.keys(obj).forEach(function(key){s.push(key);s.push('=\'');s.push(obj[key]);s.push('\';');});return s.join('');}
-var log = function(msg){util.log(msg);};
-var uniqid = function(prefix,more_entropy){if(typeof prefix==='undefined'){prefix='';}var retId;var formatSeed=function(seed,reqWidth){seed=parseInt(seed,10).toString(16);if(reqWidth<seed.length){return seed.slice(seed.length-reqWidth);}if(reqWidth>seed.length){return Array(1+(reqWidth-seed.length)).join('0')+seed;}return seed;};if(!this.php_js){this.php_js={};}if(!this.php_js.uniqidSeed){this.php_js.uniqidSeed=Math.floor(Math.random()*0x75bcd15);}this.php_js.uniqidSeed++;retId=prefix;retId+=formatSeed(parseInt(new Date().getTime()/1000,10),8);retId+=formatSeed(this.php_js.uniqidSeed,5);if(more_entropy){retId+=(Math.random()*10).toFixed(8).toString();}return retId;}
-var util = require('util');
-
-var makemeta = function(metadata) {
-	if(typeof metadata === 'string') {
-		metadata = {StreamTitle: metadata};
-	} else if(!metadata || Object(metadata) !== metadata) {
-		return;
-	};
-	var string = icystring(metadata);
-	var length = Buffer.byteLength(string);
-	var buflen = Math.ceil(length/16);
-	var buffer = new Buffer(buflen*16+1);
-		buffer[0] = buflen;
-	var written = buffer.write(string, 1);
-	buffer.fill(0, written+1);
-	return buffer;
-};
-
-var server = http.createServer(function(req, res) {
-	if (req.method.toUpperCase() !== 'GET') {
-		log(req.socket.remoteAddress+':'+req.socket.remotePort+' tried method '+req.method.toUpperCase());
-		res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>405 Method Not Allowed</title></head><body><h1>Method Not Allowed</h1><p>The requested method '+req.method.toUpperCase()+' is not allowed on this server.</p><hr><address>nodecast Server at '+req.socket.localAddress+' Port '+req.socket.localPort+'</address></body></html>');
-	} else if (req.url === '/crossdomain.xml' && config.servecrossdomainxml) {
-		res.writeHead(200, {
-			'content-type': 'text/xml',
-			'connection': 'close'
-		});
-		res.end('<?xml version="1.0"?>\r\n<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">\r\n<cross-domain-policy>\r\n<allow-access-from domain="*" to-ports="*" />\r\n</cross-domain-policy>');
-	} else if(req.url === '/listen.pls' && config.servelistenpls) {
-		res.writeHead(200, {
-			'content-type': 'audio/x-scpls',
-			'connection': 'close'
-		});
-		res.write('[playlist]\n');
-		res.write('NumberOfEntries='+Object.keys(mounts).length+'\n\n');
-		var filenum = 0;
-		Object.keys(mounts).forEach(function(mountpoint) {
-			if(!mounts[mountpoint].notinlistenpls) {
-				filenum++;
-				res.write('File'+filenum+'=http://'+req.headers.host+mountpoint+'\n');
-				res.write('Title'+filenum+'='+mounts[mountpoint]._.headers['icy-name']+'\n');
-				res.write('Length'+filenum+'=-1\n');
-			};
-		});
-		res.end();
-	} else if(config.statuspage && config.statuspage.readable && config.statuspage.readable.path && req.url === config.statuspage.readable.path && ((in_array('*', config.statuspage.readable.allowedips) || in_array('0.0.0.0', config.statuspage.readable.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.readable.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
-		res.writeHead(200, {
-			'content-type': 'text/plain',
-			'connection': 'close'
-		});
-		var uptime = process.uptime();
-		var listener = 0;
-		var prebuffersize = 0;
-		var bytesrcvd = 0;
-		var bytessent = 0;
-		Object.keys(mounts).forEach(function(mountpoint) {
-			listener += Object.keys(mounts[mountpoint]._.clients).length;
-			bytesrcvd += mounts[mountpoint]._.bytesrcvd;
-			bytessent += mounts[mountpoint]._.bytessent;
-			Object.keys(mounts[mountpoint]._.prebuffers).forEach(function(prebufferkey) {
-				prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
-			});
-		});
-		var systemload = Math.round(os.loadavg()[0]*100)+'% ('+os.loadavg().join(' ')+')';
-		var memoryheap = process.memoryUsage();
-		memoryheap = Math.round(memoryheap.heapUsed/memoryheap.heapTotal*100)+'%';
-		res.write(
-			'Uptime: '+uptime+'\n'+
-			'Listener: '+listener+'\n'+
-			'Bytes received: '+bytesrcvd+'\n'+
-			'Bytes sent: '+bytessent+'\n'+
-			'System load: '+systemload+'\n'+
-			'Memory heap: '+memoryheap+'\n'+
-			'Prebuffer size: '+prebuffersize+'\n'
-		);
-		Object.keys(mounts).forEach(function(mountpoint) {
-			res.write('Mount '+mountpoint+'\n');
-			var prebuffers = 0;
-			Object.keys(mounts[mountpoint]._.prebuffers).forEach(function(prebufferkey) {
-				prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
-			});
-			res.write(' Prebuffer '+prebuffersize+' ('+Object.keys(mounts[mountpoint]._.prebuffers).length+')\n');
-			Object.keys(mounts[mountpoint]._.clients).forEach(function(clientid) {
-				res.write(' Client '+clientid+' '+mounts[mountpoint]._.clients[clientid].req.socket.remoteAddress+':'+mounts[mountpoint]._.clients[clientid].req.socket.remotePort+' '+mounts[mountpoint]._.clients[clientid].status.sent+' '+mounts[mountpoint]._.clients[clientid].status.overflowed+'\n');
-			});
-		});
-		res.end();
-	} else if(config.statuspage && config.statuspage.parseable && config.statuspage.parseable.path && req.url === config.statuspage.parseable.path && ((in_array('*', config.statuspage.parseable.allowedips) || in_array('0.0.0.0', config.statuspage.parseable.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.parseable.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
-		res.writeHead(200, {
-			'content-type': 'application/json',
-			'connection': 'close'
-		});
-		res.end(JSON.stringify({'config':config,'mounts':mounts}));
-	} else if(config.statuspage && config.statuspage.inspect && config.statuspage.inspect.path && req.url === config.statuspage.inspect.path && ((in_array('*', config.statuspage.inspect.allowedips) || in_array('0.0.0.0', config.statuspage.inspect.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.inspect.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
-		res.writeHead(200, {
-			'content-type': 'application/json',
-			'connection': 'close'
-		});
-		res.end(util.inspect({'config':config,'mounts':mounts}, config.statuspage.inspect.options));
-	} else if(config.statuspage && config.statuspage.mountslist && config.statuspage.mountslist.path && req.url === config.statuspage.mountslist.path && ((in_array('*', config.statuspage.mountslist.allowedips) || in_array('0.0.0.0', config.statuspage.mountslist.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.mountslist.allowedips)) || (in_array('*', config.statuspage.allowedips) || in_array('0.0.0.0', config.statuspage.allowedips) || in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
-		res.writeHead(200, {
-			'content-type': 'application/json',
-			'connection': 'close'
-		});
-		var mountslist = [];
-		Object.keys(mounts).forEach(function(mountname) {
-			mountslist.push(mountname);
-		});
-		res.end(JSON.stringify(mountslist));
-	} else if(mounts[req.url] && mounts[req.url]._) {
-		var sumclients = 0;
-		Object.keys(mounts).forEach(function(mountpoint) {
-			if(mounts[mountpoint]._ && mounts[mountpoint]._.clients) {
-				sumclients += Object.keys(mounts[mountpoint]._.clients).length;
-			};
-		});
-		if((!config.maxclients || config.maxclients > sumclients) && (!mounts[req.url].maxclients || mounts[req.url].maxclients > Object.keys(mounts[req.url]._.clients).length)) {
-			var clientrealheaders = mounts[req.url]._.headers;
-			if(req.headers['icy-metadata']) {
-				var clientmetaint = clientrealheaders['icy-metaint'];
-			} else {
-				var clientmetaint = 0;
-				delete clientrealheaders['icy-metaint'];
-			};
-			res.sendDate = false;
-			res.writeHead(200, clientrealheaders);
-			var clientid = uniqid('', true);
-			var clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
+var server = http.createServer(function (req, res) {
+    if (req.method.toUpperCase() !== 'GET') {
+        log(req.socket.remoteAddress + ':' + req.socket.remotePort + ' tried method ' + req.method.toUpperCase());
+        res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>405 Method Not Allowed</title></head><body><h1>Method Not Allowed</h1><p>The requested method ' +
+                  req.method.toUpperCase() +
+                  'is not allowed on this server.</p><hr><address>nodecast Server at ' +
+                  req.socket.localAddress +
+                  ' Port ' +
+                  req.socket.localPort +
+                  '</address></body></html>');
+    } else if (req.url === '/crossdomain.xml' && config.servecrossdomainxml) {
+        res.writeHead(200, {
+            'content-type': 'text/xml',
+            'connection': 'close'
+        });
+        res.end('<?xml version="1.0"?>\r\n<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">\r\n<cross-domain-policy>\r\n<allow-access-from domain="*" to-ports="*" />\r\n</cross-domain-policy>');
+    } else if (req.url === '/listen.pls' && config.servelistenpls) {
+        res.writeHead(200, {
+            'content-type': 'audio/x-scpls',
+            'connection': 'close'
+        });
+        res.write('[playlist]\n');
+        res.write('NumberOfEntries=' + Object.keys(mounts).length + '\n\n');
+        var filenum = 0;
+        Object.keys(mounts).forEach(function (mountpoint) {
+            if (!mounts[mountpoint].notinlistenpls) {
+                filenum++;
+                res.write('File' + filenum + '=http://' + req.headers.host + mountpoint + '\n');
+                res.write('Title' + filenum + '=' + mounts[mountpoint]._.headers['icy-name'] + '\n');
+                res.write('Length' + filenum + '=-1\n');
+            }
+        });
+        res.end();
+    } else if (config.statuspage &&
+               config.statuspage.readable &&
+               config.statuspage.readable.path &&
+               req.url === config.statuspage.readable.path &&
+               ((in_array('*', config.statuspage.readable.allowedips) ||
+                 in_array('0.0.0.0', config.statuspage.readable.allowedips) ||
+                 in_array(req.socket.remoteAddress, config.statuspage.readable.allowedips)) ||
+                (in_array('*', config.statuspage.allowedips) ||
+                 in_array('0.0.0.0', config.statuspage.allowedips) ||
+                 in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
+        res.writeHead(200, {
+            'content-type': 'text/plain',
+            'connection': 'close'
+        });
+        var uptime = process.uptime(),
+            listener = 0,
+            prebuffersize = 0,
+            bytesrcvd = 0,
+            bytessent = 0,
+            systemload = Math.round(os.loadavg()[0] * 100) + '% (' + os.loadavg().join(' ') + ')',
+            memoryheap = process.memoryUsage(),
+            prebuffers = 0;
+        memoryheap = Math.round(memoryheap.heapUsed / memoryheap.heapTotal * 100) + '%';
+        Object.keys(mounts).forEach(function (mountpoint) {
+            listener += Object.keys(mounts[mountpoint]._.clients).length;
+            bytesrcvd += mounts[mountpoint]._.bytesrcvd;
+            bytessent += mounts[mountpoint]._.bytessent;
+            Object.keys(mounts[mountpoint]._.prebuffers).forEach(function (prebufferkey) {
+                prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
+            });
+        });
+        res.write('Uptime: ' + uptime + '\n' +
+                  'Listener: ' + listener + '\n' +
+                  'Bytes received: ' + bytesrcvd + '\n' +
+                  'Bytes sent: ' + bytessent + '\n' +
+                  'System load: ' + systemload + '\n' +
+                  'Memory heap: ' + memoryheap + '\n' +
+                  'Prebuffer size: ' + prebuffersize + '\n');
+        Object.keys(mounts).forEach(function (mountpoint) {
+            res.write('Mount ' + mountpoint + '\n');
+            Object.keys(mounts[mountpoint]._.prebuffers).forEach(function (prebufferkey) {
+                prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
+            });
+            res.write(' Prebuffer ' + prebuffersize + ' (' + Object.keys(mounts[mountpoint]._.prebuffers).length + ')\n');
+            Object.keys(mounts[mountpoint]._.clients).forEach(function (clientid) {
+                res.write(' Client ' + clientid + ' ' + mounts[mountpoint]._.clients[clientid].req.socket.remoteAddress + ':' + mounts[mountpoint]._.clients[clientid].req.socket.remotePort + ' ' + mounts[mountpoint]._.clients[clientid].status.sent + ' ' +
+                          mounts[mountpoint]._.clients[clientid].status.overflowed + '\n');
+            });
+        });
+        res.end();
+    } else if(config.statuspage &&
+              config.statuspage.parseable &&
+              config.statuspage.parseable.path &&
+              req.url === config.statuspage.parseable.path &&
+              ((in_array('*', config.statuspage.parseable.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.parseable.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.parseable.allowedips)) ||
+               (in_array('*', config.statuspage.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
+        res.writeHead(200, {
+            'content-type': 'application/json',
+            'connection': 'close'
+        });
+        res.end(JSON.stringify({'config': config, 'mounts': mounts}));
+    } else if(config.statuspage &&
+              config.statuspage.inspect &&
+              config.statuspage.inspect.path &&
+              req.url === config.statuspage.inspect.path &&
+              ((in_array('*', config.statuspage.inspect.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.inspect.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.inspect.allowedips)) ||
+               (in_array('*', config.statuspage.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
+        res.writeHead(200, {
+            'content-type': 'application/json',
+            'connection': 'close'
+        });
+        res.end(util.inspect({'config': config, 'mounts': mounts}, config.statuspage.inspect.options));
+    } else if(config.statuspage &&
+              config.statuspage.mountslist &&
+              config.statuspage.mountslist.path &&
+              req.url === config.statuspage.mountslist.path &&
+              ((in_array('*', config.statuspage.mountslist.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.mountslist.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.mountslist.allowedips)) ||
+               (in_array('*', config.statuspage.allowedips) ||
+                in_array('0.0.0.0', config.statuspage.allowedips) ||
+                in_array(req.socket.remoteAddress, config.statuspage.allowedips)))) {
+        res.writeHead(200, {
+            'content-type': 'application/json',
+            'connection': 'close'
+        });
+        var mountslist = [];
+        Object.keys(mounts).forEach(function (mountname) {
+            mountslist.push(mountname);
+        });
+        res.end(JSON.stringify(mountslist));
+    } else if (mounts[req.url] && mounts[req.url]._) {
+        var sumclients = 0,
+            clientrealheaders = mounts[req.url]._.headers,
+            clientmetaint = 0,
+            clientid = uniqid('', true),
+            clientstatus = {};
+        Object.keys(mounts).forEach(function (mountpoint) {
+            if (mounts[mountpoint]._ && mounts[mountpoint]._.clients) {
+                sumclients += Object.keys(mounts[mountpoint]._.clients).length;
+            }
+        });
+        if ((!config.maxclients ||
+             config.maxclients > sumclients) &&
+                (!mounts[req.url].maxclients ||
+                 mounts[req.url].maxclients > Object.keys(mounts[req.url]._.clients).length)) {
+            if (req.headers['icy-metadata']) {
+                clientmetaint = clientrealheaders['icy-metaint'];
+            } else {
+                clientmetaint = 0;
+                delete clientrealheaders['icy-metaint'];
+            }
+            res.sendDate = false;
+            res.writeHead(200, clientrealheaders);
+			clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
 			var resprebuffers = mounts[req.url]._.prebuffers;
 			Object.keys(resprebuffers).forEach(function(resprebufferkey) {
 				var chunk = resprebuffers[resprebufferkey];
