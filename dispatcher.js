@@ -35,59 +35,38 @@ var config = {
             allowedips: ['10.135.0.3']
         }
     }
-},
-    mounts = {
-        '/main-192.mp3': {
-            url: 'http://localhost:7777/main-192.mp3',
-            metaurl: 'http://localhost/meta.php?stream=main-192',
-            maxclients: 10
-        },
-        '/main-128.mp3': {
-            url: 'http://localhost:7777/main-128.mp3',
-            metaurl: 'http://localhost/meta.php?stream=main-128',
-            maxclients: 10
-        },
-        '/main-128.aac': {
-            url: 'http://localhost:7777/main-128.aac',
-            metaurl: 'http://localhost/meta.php?stream=main-aac',
-            maxclients: 10
-        },
-        '/main-64.aac': {
-            url: 'http://localhost:7777/main-64.aac',
-            metaurl: 'http://localhost/meta.php?stream=main-64.aac',
-            maxclients: 10
-        }
+};
+var mounts = {
+    '/main-192.mp3': {
+        url: 'http://localhost:7777/main-192.mp3',
+        metaurl: 'http://localhost/meta.php?stream=main-192',
+        maxclients: 10
     },
-    http = require('http'),
-    in_array = function (needle, haystack) {
-        var i = false;
-        if (haystack instanceof Array) {
-            for (i = 0; i < haystack.length; i++) {
-                if (haystack[i] === needle) {
-                    return true;
-                }
-            }
-        } else {
-            for (i in haystack) {
-                if (haystack[i] === needle) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    '/main-128.mp3': {
+        url: 'http://localhost:7777/main-128.mp3',
+        metaurl: 'http://localhost/meta.php?stream=main-128',
+        maxclients: 10
     },
-    os = require('os'),
-    icystring = function (obj) {var s = []; Object.keys(obj).forEach(function (key) {s.push(key); s.push('=\''); s.push(obj[key]); s.push('\';'); }); return s.join(''); },
-    util = require('util'),
-    log = function (msg) {
-        if (typeof msg === 'undefined') {
-            return;
-        }
-        util.log(msg);
+    '/main-128.aac': {
+        url: 'http://localhost:7777/main-128.aac',
+        metaurl: 'http://localhost/meta.php?stream=main-aac',
+        maxclients: 10
     },
-    uniqid = function () {
-        return Math.random().toString(16) + Math.random().toString(16);
-    };
+    '/main-64.aac': {
+        url: 'http://localhost:7777/main-64.aac',
+        metaurl: 'http://localhost/meta.php?stream=main-64.aac',
+        maxclients: 10
+    }
+};
+
+var functions = require('./functions.js');
+var http = functions.http;
+var in_array = functions.http;
+var os = functions.os;
+var icystring = functions.icystring;
+var util = functions.util;
+var log = functions.log;
+var uniqid = functions.uniqid;
 
 var makemeta = function (metadata) {
     if (typeof metadata === 'string') {
@@ -108,19 +87,34 @@ var makemeta = function (metadata) {
 var server = http.createServer(function (req, res) {
     if (req.method.toUpperCase() !== 'GET') {
         log(req.socket.remoteAddress + ':' + req.socket.remotePort + ' tried method ' + req.method.toUpperCase());
-        res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN"><html><head><title>405 Method Not Allowed</title></head><body><h1>Method Not Allowed</h1><p>The requested method ' +
+        res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">' +
+                  '<html>' +
+                  '<head>' +
+                  '<title>405 Method Not Allowed</title>' +
+                  '</head>' +
+                  '<body>' +
+                  '<h1>Method Not Allowed</h1>' +
+                  '<p>The requested method ' +
                   req.method.toUpperCase() +
-                  'is not allowed on this server.</p><hr><address>nodecast Server at ' +
+                  'is not allowed on this server.</p>' +
+                  '<hr>' +
+                  '<address>nodecast Server at ' +
                   req.socket.localAddress +
                   ' Port ' +
                   req.socket.localPort +
-                  '</address></body></html>');
+                  '</address>' +
+                  '</body>' +
+                  '</html>');
     } else if (req.url === '/crossdomain.xml' && config.servecrossdomainxml) {
         res.writeHead(200, {
             'content-type': 'text/xml',
             'connection': 'close'
         });
-        res.end('<?xml version="1.0"?>\r\n<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">\r\n<cross-domain-policy>\r\n<allow-access-from domain="*" to-ports="*" />\r\n</cross-domain-policy>');
+        res.end('<?xml version="1.0"?>' +
+                '<!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">' +
+                '<cross-domain-policy>' +
+                '<allow-access-from domain="*" to-ports="*" />' +
+                '</cross-domain-policy>');
     } else if (req.url === '/listen.pls' && config.servelistenpls) {
         res.writeHead(200, {
             'content-type': 'audio/x-scpls',
@@ -130,7 +124,7 @@ var server = http.createServer(function (req, res) {
         res.write('NumberOfEntries=' + Object.keys(mounts).length + '\n\n');
         var filenum = 0;
         Object.keys(mounts).forEach(function (mountpoint) {
-            if (!mounts[mountpoint].notinlistenpls) {
+            if (!mounts[mountpoint].notinlistenpls && mounts[mountpoint]._) {
                 filenum++;
                 res.write('File' + filenum + '=http://' + req.headers.host + mountpoint + '\n');
                 res.write('Title' + filenum + '=' + mounts[mountpoint]._.headers['icy-name'] + '\n');

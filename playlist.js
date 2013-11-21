@@ -105,18 +105,20 @@ var playlists = {
     }
 };
 
-var exec = require('child_process').exec;
-var fs = require("fs");
-var http = require('http');
-var in_array = function(needle,haystack,argStrict){var key='',strict=!!argStrict;if(strict){for(key in haystack){if(haystack[key]===needle){return true;}}}else{for(key in haystack){if(haystack[key]==needle){return true;}}}return false;}
-var log = function(msg){if(typeof msg==='undefined'){return};util.log(msg);};
-var os = require('os');
-var path = require("path");
-var shuffle = function(inputArr){var valArr=[],k='',i=0,strictForIn=false,populateArr=[];for(k in inputArr){if(inputArr.hasOwnProperty(k)){valArr.push(inputArr[k]);if(strictForIn){delete inputArr[k];}}}valArr.sort(function(){return 0.5-Math.random();});this.php_js=this.php_js||{};this.php_js.ini=this.php_js.ini||{};strictForIn=this.php_js.ini['phpjs.strictForIn']&&this.php_js.ini['phpjs.strictForIn'].local_value&&this.php_js.ini['phpjs.strictForIn'].local_value!=='off';populateArr=strictForIn?inputArr:populateArr;for(i=0;i<valArr.length;i++){populateArr[i]=valArr[i];}return strictForIn||populateArr;};
-var spawn = require('child_process').spawn;
+var functions = require('./functions.js');
+var child_process = functions.child_process;
+var exec = child_process.exec;
+var spawn = child_process.spawn;
+var fs = functions.fs;
+var http = functions.http;
+var in_array = functions.in_array;
+var log = functions.log;
+var os = functions.os;
+var path = functions.path;
+var shuffle = functions.shuffle;
 var tmp = {};
-var uniqid = function(prefix,more_entropy){if(typeof prefix==='undefined'){prefix='';}var retId;var formatSeed=function(seed,reqWidth){seed=parseInt(seed,10).toString(16);if(reqWidth<seed.length){return seed.slice(seed.length-reqWidth);}if(reqWidth>seed.length){return Array(1+(reqWidth-seed.length)).join('0')+seed;}return seed;};if(!this.php_js){this.php_js={};}if(!this.php_js.uniqidSeed){this.php_js.uniqidSeed=Math.floor(Math.random()*0x75bcd15);}this.php_js.uniqidSeed++;retId=prefix;retId+=formatSeed(parseInt(new Date().getTime()/1000,10),8);retId+=formatSeed(this.php_js.uniqidSeed,5);if(more_entropy){retId+=(Math.random()*10).toFixed(8).toString();}return retId;}
-var util = require('util');
+var uniqid = functions.uniqid;
+var util = functions.util;
 
 var rescan = function() {
     var newtmp = {};

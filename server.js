@@ -24,12 +24,11 @@ var config = {
     'userapi': 'http://localhost/userapi.php'
 };
 
-var http = require('http'),
-    net = require('net'),
-    util = require('util'),
-    parseChunk = function (chunk) {
-        return chunk.toString().replace(/(\r\n|\r|\n|\n\r)/, '');
-    };
+var functions = require('./functions.js');
+var http = functions.http;
+var net = functions.net;
+var util = functions.util;
+var trimnl = functions.trimnl;
 
 var userapi = function (authstring, method, callback) {
     callback(3);
@@ -108,11 +107,11 @@ var passincoming = function (c) {
 };
 
 var shoutcastincoming = net.createServer(function (c) {
-    c.setTimeout(5000, function() {
+    c.setTimeout(5000, function () {
         c.destroy();
     });
     c.once('data', function (chunk) {
-        var auth = parseChunk(chunk);
+        var auth = trimnl(chunk);
         userapi(auth, 'shoutcast', function (allowness) {
             incoming(allowness, c, 'shoutcast');
         });

@@ -66,7 +66,7 @@ var mounts = {
         genre: 'RaveOne.FM Mainstream AAC',
         bitrate: 128,
         samplerate: 44100,
-        codec: 'libfaac',
+        codec: 'aac',
         format: 'adts',
         metaint: 8192,
         contenttype: 'audio/x-aac',
@@ -100,7 +100,7 @@ var mounts = {
 var sources = {
     'dj': {
         url: 'http://localhost:8080/',
-        retrywait: 1000,
+        retrywait: 100,
         //jingleafterdisconnect: 'adjingle',
         callback: function () {
             jingle('adjingle', function () {
@@ -129,7 +129,7 @@ var sources = {
     },
     'playlist': {
         url: 'http://127.0.0.1:6666/handsup',
-        retrywait: 1000,
+        retrywait: 0,
         unsyncdiscard: true,
         timeout: 1000,
         destinations: {
@@ -201,37 +201,14 @@ var jingles = {
     }
 };
 
-var http = require('http'),
-    in_array = function (needle, haystack) {
-        var i = false;
-        if (haystack instanceof Array) {
-            for (i = 0; i < haystack.length; i++) {
-                if (haystack[i] === needle) {
-                    return true;
-                }
-            }
-        } else {
-            for (i in haystack) {
-                if (haystack[i] === needle) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    },
-    os = require('os'),
-    child_process = require('child_process'),
-    uniqid = function () {
-        return Math.random().toString(16) + Math.random().toString(16);
-    },
-    util = require('util'),
-    log = function (msg) {
-        if (typeof msg === 'undefined') {
-            return;
-        }
-        util.log(msg);
-    },
-    jingle = false;
+var functions = require('./functions.js');
+var http = functions.http;
+var in_array = functions.in_array;
+var os = functions.os;
+var child_process = functions.child_process;
+var uniqid = functions.uniqid;
+var util = functions.util;
+var log = functions.log;
 
 var mount = function (mountpoint) {
     log('Spawning mount(' + mountpoint + ')');
@@ -321,10 +298,12 @@ var mount = function (mountpoint) {
     mounts[mountpoint]._.proc.stdout.on('data', function (chunk) {
         Object.keys(mounts[mountpoint]._.clients).forEach(function (clientid) {
             if (mounts[mountpoint]._.clients[clientid] && mounts[mountpoint]._.clients[clientid].res.writable === true) {
-                if ((mounts[mountpoint]._.clients[clientid].unsynced = !mounts[mountpoint]._.clients[clientid].res.write(chunk)) !== null) {
-                    mounts[mountpoint]._.clients[clientid].res.once('drain', function () {
-                        mounts[mountpoint]._.clients[clientid].unsynced = false;
-                    });
+                if (!mounts[mountpoint]._.clients[clientid].unsynced) {
+                    if ((mounts[mountpoint]._.clients[clientid].unsynced = !mounts[mountpoint]._.clients[clientid].res.write(chunk)) !== false) {
+                        mounts[mountpoint]._.clients[clientid].res.once('drain', function () {
+                            mounts[mountpoint]._.clients[clientid].unsynced = false;
+                        });
+                    }
                 }
             }
         });
@@ -494,7 +473,7 @@ var source = function (sourcename) {
     });
 };
 
-jingle = function (jinglename, callback) {
+var jingle = function (jinglename, callback) {
     log('Spawning jingle(' + jinglename + ')');
     var usable = false,
         options = [];
@@ -600,41 +579,6 @@ jingle = function (jinglename, callback) {
     }
 };
 
-Object.keys(mounts).forEach(function (mountpoint) {
-    log('Spawning mount(' + mountpoint + ')');
-    mount(mountpoint);
-});
-
-Object.keys(sources).forEach(function (sourcekey) {
-    log('Spawning source(' + sourcekey + ')');
-    Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
-        if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
-            sources[sourcekey].destinations[destinationkey].priority = 0;
-        }
-    });
-    source(sourcekey);
-});
-
-Object.keys(jingles).forEach(function (jinglekey) {
-    log('Setting up jingle ' + jinglekey);
-    Object.keys(jingles[jinglekey].destinations).forEach(function (destinationkey) {
-        if (typeof jingles[jinglekey].destinations[destinationkey].priority !== 'number') {
-            jingles[jinglekey].destinations[destinationkey].priority = 0;
-        }
-    });
-    if (typeof jingles[jinglekey].listen === 'string' && jingles[jinglekey].listen.trim() !== '') {
-        if (jingles[jinglekey].listen === 'SIGUSR2') {
-            process.on('SIGUSR2', function () {
-                if (typeof jingles[jinglekey].atHours === 'object' && in_array((new Date()).getHours(), jingles[jinglekey].atHours)) {
-                    if (typeof jingle === 'function') {
-                        jingle(jinglekey);
-                    }
-                }
-            });
-        }
-    }
-});
-
 var server = http.createServer(function (req, res) {
     if (req.method.toUpperCase() !== 'GET') {
         log(req.socket.remoteAddress + ':' + req.socket.remotePort + ' tried method ' + req.method.toUpperCase());
@@ -725,7 +669,7 @@ var server = http.createServer(function (req, res) {
         log(clientid + ' connected to mountpoint ' + req.url);
         res.sendDate = false;
 
-        headers['connection'] = 'close';
+        headers.connection = 'close';
 
         if (typeof mounts[mountpoint].contenttype === 'string' && mounts[mountpoint].contenttype.trim() !== '') {
             headers['content-type'] = mounts[mountpoint].contenttype;
@@ -784,6 +728,41 @@ var server = http.createServer(function (req, res) {
             delete mounts[req.url]._.clients[clientid];
         });
     }
+});
+
+Object.keys(jingles).forEach(function (jinglekey) {
+    log('Setting up jingle ' + jinglekey);
+    Object.keys(jingles[jinglekey].destinations).forEach(function (destinationkey) {
+        if (typeof jingles[jinglekey].destinations[destinationkey].priority !== 'number') {
+            jingles[jinglekey].destinations[destinationkey].priority = 0;
+        }
+    });
+    if (typeof jingles[jinglekey].listen === 'string' && jingles[jinglekey].listen.trim() !== '') {
+        if (jingles[jinglekey].listen === 'SIGUSR2') {
+            process.on('SIGUSR2', function () {
+                if (typeof jingles[jinglekey].atHours === 'object' && in_array((new Date()).getHours(), jingles[jinglekey].atHours)) {
+                    if (typeof jingle === 'function') {
+                        jingle(jinglekey);
+                    }
+                }
+            });
+        }
+    }
+});
+
+Object.keys(mounts).forEach(function (mountpoint) {
+    log('Spawning mount(' + mountpoint + ')');
+    mount(mountpoint);
+});
+
+Object.keys(sources).forEach(function (sourcekey) {
+    log('Spawning source(' + sourcekey + ')');
+    Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
+        if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
+            sources[sourcekey].destinations[destinationkey].priority = 0;
+        }
+    });
+    source(sourcekey);
 });
 
 server.listen(config.server.port, config.server.ip);

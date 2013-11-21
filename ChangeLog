@@ -1,3 +1,17 @@
+2013.11.21, Version 0.0.5 (Beta)
+
+- transcoder.js
+* Bugfix~: Default-Codec "libfaac" is an alias to aac but not on all systems out there
+* Bugfix~: Default-Retrywait should be really low to prevent underflow in the buffer
+
+- dispatcher.js
+* Bugfix: clients now don't get too many listeners caused by a typo in the overflow-check
+* Bugfix: process does not crash anymore by serving /listen.pls when mounts aren't setup completely
+* Moved init-starts from anywhere between function definitions to the bottom
+
+- functions.js
+* Initial commit (moved often called functions from all js files into there)
+
 2013.11.19, Version 0.0.4 (Beta)
 
 - transcoder.js
