@@ -1,3 +1,20 @@
+2013.11.22, Version 0.1.1 (Beta)
+
+- transcoder.js
+* Combined source and jingle streams into one function and one config (sources) (Still need to change a few things here, don't use jingles in production!)
+* Implemented passthrough streams for much better performance
+* Other performance increasements and code cleanups (finally... thank god) :-)
+
+- dispatcher.js
+* Important bugfix: The metainterval has been calculated wrong: If a chunk was larger than the metainterval bytes set on the transcoder, the chunk hasn't been split into metainterval bytes to fit in there. Instead it has been written to the client without any slicings or splittings done. This caused messed up streams and the listeners had to reconnect to the stream.
+* Code cleanups also done here
+
+- functions.js
+* Added the functions needed by passthrough streams here
+
+- *
+: TODO: Working on a json-config system to prevent overwrites done by updating the programs
+
 2013.11.21, Version 0.0.5 (Beta)
 
 - transcoder.js

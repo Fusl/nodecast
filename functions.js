@@ -17,6 +17,8 @@ functions.http = require('http');
 functions.os = require('os');
 functions.path = require("path");
 functions.util = require('util');
+functions.stream = require('stream');
+
 
 functions.exec = functions.child_process.exec;
 functions.spawn = functions.child_process.spawn;
@@ -72,3 +74,22 @@ functions.shuffle = function (inputArr) {
         return 0.5 - Math.random();
     });
 };
+
+functions.streampass = function () {
+    this.writable = true;
+    this.readable = true;
+};
+
+functions.util.inherits(functions.streampass, functions.stream.Stream);
+
+functions.streampass.prototype.write = function (chunk) {
+    this.emit('data', chunk);
+};
+
+functions.streampass.prototype.end = function () {
+    this.emit('end');
+};
+
+functions.streampass.prototype.destroy = function () {
+    this.emit('close');
+}

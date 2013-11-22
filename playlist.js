@@ -8,7 +8,7 @@
 // Configuration (Modify these to your needs)
 var config = {
     'global': {
-        'version': '0.0.3',
+        'version': '0.0.6',
         'converterpath': '/usr/bin/ffmpeg',
         'convertsamplerate': 48000,
         'rescaninterval': 60000

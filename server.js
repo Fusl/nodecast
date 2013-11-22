@@ -19,7 +19,7 @@ var config = {
         'listenicecastport': 4000,
         'listencontrolport': 4002,
         'master': true,
-        'version': '0.0.3'
+        'version': '0.0.6'
     },
     'userapi': 'http://localhost/userapi.php'
 };

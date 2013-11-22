@@ -5,7 +5,7 @@
 // Configuration (Modify these to your needs)
 var config = {
     global: {
-        version: '0.0.3',
+        version: '0.0.6',
         converterpath: '/usr/bin/ffmpeg',
         convertsamplerate: 48000
     },
@@ -103,7 +103,7 @@ var sources = {
         retrywait: 100,
         //jingleafterdisconnect: 'adjingle',
         callback: function () {
-            jingle('adjingle', function () {
+            source('adjingle', function () {
                 source('dj');
             });
         },
@@ -149,38 +149,13 @@ var sources = {
                 priority: 9
             }
         }
-    }
-};
-var jingles = {
+    },
     'adjingle': {
         url: 'http://10.135.0.2/streamad/streamad.php',
+        isjingle: true,
         listen: 'SIGUSR2',
-        atHours: [
-            0,
-            1,
-            2,
-            3,
-            4,
-            5,
-            6,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12,
-            13,
-            14,
-            15,
-            16,
-            17,
-            18,
-            19,
-            20,
-            21,
-            22,
-            23
-        ],
+        nativerate: true,
+        atHours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
         destinations: {
             '/main-192.mp3': {
                 priority: 9
@@ -209,15 +184,37 @@ var child_process = functions.child_process;
 var uniqid = functions.uniqid;
 var util = functions.util;
 var log = functions.log;
+var Streampass = functions.streampass;
+
+var mountstreamsin = {};
+var mountstreamsout = {};
 
 var mount = function (mountpoint) {
+    var options = [],
+        proc = false;
     log('Spawning mount(' + mountpoint + ')');
     mounts[mountpoint]._ = {};
     mounts[mountpoint]._.clients = {};
-    mounts[mountpoint]._.desynced = false;
-    mounts[mountpoint]._.source = {};
-
-    var options = [];
+    mounts[mountpoint]._.source = false;
+    
+    if (!mountstreamsin[mountpoint]) {
+        mountstreamsin[mountpoint] = new Streampass();
+        mountstreamsin[mountpoint].setMaxListeners(0);
+    }
+    if (!mountstreamsin[mountpoint].readable || !mountstreamsin[mountpoint].writable) {
+        mountstreamsin[mountpoint].destroy();
+        mountstreamsin[mountpoint] = new Streampass();
+        mountstreamsin[mountpoint].setMaxListeners(0);
+    }
+    if (!mountstreamsout[mountpoint]) {
+        mountstreamsout[mountpoint] = new Streampass();
+        mountstreamsout[mountpoint].setMaxListeners(0);
+    }
+    if (!mountstreamsout[mountpoint].readable || !mountstreamsout[mountpoint].writable) {
+        mountstreamsout[mountpoint].destroy();
+        mountstreamsout[mountpoint] = new Streampass();
+        mountstreamsout[mountpoint].setMaxListeners(0);
+    }
 
     if (mounts[mountpoint].debug !== true && config.global.debug !== true) {
         options.push('-loglevel', 'quiet');
@@ -234,7 +231,7 @@ var mount = function (mountpoint) {
     }
 
     options.push('-f', 'flac');
-
+    
     options.push('-re');
 
     options.push('-i', 'pipe:0');
@@ -287,40 +284,37 @@ var mount = function (mountpoint) {
 
     options.push('pipe:1');
 
-    mounts[mountpoint]._.proc = child_process.spawn(config.global.converterpath, options);
+    proc = child_process.spawn(config.global.converterpath, options);
 
     if (mounts[mountpoint].debug === true || config.global.debug === true) {
-        mounts[mountpoint]._.proc.stderr.on('data', function (chunk) {
+        proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
     }
-
-    mounts[mountpoint]._.proc.stdout.on('data', function (chunk) {
-        Object.keys(mounts[mountpoint]._.clients).forEach(function (clientid) {
-            if (mounts[mountpoint]._.clients[clientid] && mounts[mountpoint]._.clients[clientid].res.writable === true) {
-                if (!mounts[mountpoint]._.clients[clientid].unsynced) {
-                    if ((mounts[mountpoint]._.clients[clientid].unsynced = !mounts[mountpoint]._.clients[clientid].res.write(chunk)) !== false) {
-                        mounts[mountpoint]._.clients[clientid].res.once('drain', function () {
-                            mounts[mountpoint]._.clients[clientid].unsynced = false;
-                        });
-                    }
-                }
-            }
-        });
+    
+    proc.stdout.on('data', function (chunk) {
+        mountstreamsout[mountpoint].write(chunk);
+    });
+    
+    mountstreamsin[mountpoint].on('data', function (chunk) {
+        if (proc.stdin.writable && (!proc.stdin._writableState.length || !mounts[mountpoint].unsyncdiscard)) {
+            proc.stdin.write(chunk);
+        }
     });
 
-    mounts[mountpoint]._.proc.stdin.on('drain', function () {
-        mounts[mountpoint]._.desynced = false;
-    });
-
-    mounts[mountpoint]._.proc.once('close', function () {
+    proc.once('close', function () {
         mount(mountpoint);
     });
 };
 
 var source = function (sourcename) {
+    if (sources[sourcename].isjingle) {
+        log('Spawning source(' + sourcename + ')');
+    }
     var suicide = false,
-        options = [];
+        options = [],
+        proc = false,
+        timeout = false;
     sources[sourcename]._ = {};
     sources[sourcename]._.id = sourcename + '_' + uniqid('', true);
 
@@ -374,71 +368,61 @@ var source = function (sourcename) {
 
     options.push('pipe:1');
 
-    sources[sourcename]._.proc = child_process.spawn(config.global.converterpath, options);
+    proc = child_process.spawn(config.global.converterpath, options);
 
     if (sources[sourcename].debug === true || config.global.debug === true) {
-        sources[sourcename]._.proc.stderr.on('data', function (chunk) {
+        proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
     }
 
     if (typeof sources[sourcename].timeout === 'number' && sources[sourcename].timeout > 0 && parseInt(sources[sourcename].timeout, 0) === sources[sourcename].timeout) {
-        sources[sourcename]._.timeout = {};
-    } else {
-        sources[sourcename]._.timeout = false;
+        timeout = {};
     }
 
-    sources[sourcename]._.proc.stdout.once('data', function (chunk) {
+    proc.stdout.once('data', function (chunk) {
         var firstchunk = chunk;
-        sources[sourcename]._.proc.stdout.on('data', function (chunk) {
+        proc.stdout.on('data', function (chunk) {
             if (suicide === true) {
                 return;
             }
             Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
                 if (mounts[destinationkey]) {
-                    if (!mounts[destinationkey]._.source._ || mounts[destinationkey]._.source.destinations[destinationkey].priority < sources[sourcename].destinations[destinationkey].priority) {
-                        if (mounts[destinationkey]._.source._) {
-                            log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source.url + ' to ' + sources[sourcename].url);
+                    if (!mounts[destinationkey]._.source || sources[mounts[destinationkey]._.source].destinations[destinationkey].priority < sources[sourcename].destinations[destinationkey].priority) {
+                        if (mounts[destinationkey]._.source) {
+                            log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source.sourcename + ' to ' + sourcename);
                         } else {
-                            log('Switched ' + destinationkey + ' from none to ' + sources[sourcename].url);
+                            log('Switched ' + destinationkey + ' from none to ' + sourcename);
                         }
-                        mounts[destinationkey]._.source = sources[sourcename];
+                        mounts[destinationkey]._.source = sourcename;
                     }
-                    if (mounts[destinationkey]._.source._.id === sources[sourcename]._.id) {
-                        if (mounts[destinationkey]._.proc.stdin.writable === true && (mounts[destinationkey]._.desynced === false || sources[sourcename].unsyncdiscard !== true)) {
-                            if (firstchunk) {
-                                mounts[destinationkey]._.desynced = !mounts[destinationkey]._.proc.stdin.write(firstchunk);
-                            }
-                            mounts[destinationkey]._.desynced = !mounts[destinationkey]._.proc.stdin.write(chunk);
+                    if (mounts[destinationkey]._.source === sourcename) {
+                        if (firstchunk) {
+                            mountstreamsin[destinationkey].write(firstchunk);
                         }
+                        mountstreamsin[destinationkey].write(chunk);
                     }
                 }
             });
             if (firstchunk) {
                 firstchunk = false;
             }
-            if (sources[sourcename]._.timeout) {
-                clearTimeout(sources[sourcename]._.timeout);
-                sources[sourcename]._.timeout = setTimeout(function () {
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = setTimeout(function () {
                     if (suicide === true) {
                         return;
                     }
                     suicide = true;
                     Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
-                        if (mounts[destinationkey] && mounts[destinationkey]._.source && mounts[destinationkey]._.source._ && mounts[destinationkey]._.source._.id === sources[sourcename]._.id) {
-                            mounts[destinationkey]._.source = {};
-                            log('Switched ' + destinationkey + ' from ' + sources[sourcename].url + ' to none');
+                        if (mounts[destinationkey]._.source === sourcename) {
+                            mounts[destinationkey]._.source = false;
+                            log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
                         }
                     });
-                    sources[sourcename]._.proc.kill();
-                    if (sources[sourcename].callback && typeof sources[sourcename].callback === 'function') {
+                    proc.kill();
+                    if (typeof sources[sourcename].callback === 'function') {
                         sources[sourcename].callback();
-                    } else if (sources[sourcename].jingleafterdisconnect && typeof sources[sourcename].jingleafterdisconnect === 'string' && jingles[sources[sourcename].jingleafterdisconnect]) {
-                        if (typeof jingle === 'function') {
-                            jingle(sources[sourcename].jingleafterdisconnect, function () {
-                                source(sourcename);
-                            });
-                        }
                     } else {
                         setTimeout(function () {
                             source(sourcename);
@@ -448,135 +432,25 @@ var source = function (sourcename) {
             }
         });
     });
-    sources[sourcename]._.proc.once('close', function () {
+    proc.once('close', function () {
         if (suicide === true) {
             return;
         }
         suicide = true;
         Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
-            if (mounts[destinationkey] && mounts[destinationkey]._.source && mounts[destinationkey]._.source._ && mounts[destinationkey]._.source._.id === sources[sourcename]._.id) {
-                mounts[destinationkey]._.source = {};
-                log('Switched ' + destinationkey + ' from ' + sources[sourcename].url + ' to none');
+            if (mounts[destinationkey]._.source === sourcename) {
+                mounts[destinationkey]._.source = false;
+                log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
             }
         });
-        if (sources[sourcename].callback && typeof sources[sourcename].callback === 'function') {
+        if (typeof sources[sourcename].callback === 'function') {
             sources[sourcename].callback();
-        } else if (sources[sourcename].jingleafterdisconnect && typeof sources[sourcename].jingleafterdisconnect === 'string' && jingles[sources[sourcename].jingleafterdisconnect]) {
-            jingle(sources[sourcename].jingleafterdisconnect, function () {
-                source(sourcename);
-            });
         } else {
             setTimeout(function () {
                 source(sourcename);
             }, (typeof sources[sourcename].retrywait === 'number' ? sources[sourcename].retrywait : 0));
         }
     });
-};
-
-var jingle = function (jinglename, callback) {
-    log('Spawning jingle(' + jinglename + ')');
-    var usable = false,
-        options = [];
-    jingles[jinglename]._ = {};
-    jingles[jinglename]._.id = jinglename + '_' + uniqid('', true);
-
-    if (jingles[jinglename].debug !== true && config.global.debug !== true) {
-        options.push('-loglevel', 'quiet');
-    }
-
-    if (typeof jingles[jinglename].analyzeduration === 'number' && jingles[jinglename].analyzeduration >= 0 && parseInt(jingles[jinglename].analyzeduration, 0) === jingles[jinglename].analyzeduration) {
-        options.push('-analyzeduration', jingles[jinglename].analyzeduration);
-    } else if (config.global.analyzeduration && typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
-        options.push('-analyzeduration', config.global.analyzeduration);
-    } else {
-        options.push('-analyzeduration', 5000);
-    }
-
-    options.push('-re');
-
-    if (typeof jingles[jinglename].url === 'string' && jingles[jinglename].url.trim() !== '') {
-        options.push('-i', jingles[jinglename].url);
-    } else if (typeof config.global.jingleurl === 'string' && config.global.jingleurl.trim() !== '') {
-        options.push('-i', config.global.jingleurl);
-    } else {
-        options.push('-i', 'http://localhost/streamad.php');
-    }
-
-    if (typeof jingles[jinglename].channels === 'number' && jingles[jinglename].channels > 0 && parseInt(jingles[jinglename].channels, 0) === jingles[jinglename].channels) {
-        options.push('-ac', jingles[jinglename]);
-    } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
-        options.push('-ac', config.global.channels);
-    } else {
-        options.push('-ac', 2);
-    }
-
-    options.push('-acodec', 'flac');
-
-    if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
-        options.push('-ar', config.global.convertsamplerate);
-    } else {
-        options.push('-ar', 48000);
-    }
-
-    options.push('-f', 'flac');
-
-    options.push('-preset', 'ultrafast');
-
-    options.push('-sample_fmt', 's16');
-
-    options.push('-sn', '-vn');
-
-    options.push('pipe:1');
-
-    jingles[jinglename]._.proc = child_process.spawn(config.global.converterpath, options);
-
-    if (jingles[jinglename].debug === true || config.global.debug === true) {
-        jingles[jinglename]._.proc.stderr.on('data', function (chunk) {
-            process.stderr.write(chunk);
-        });
-    }
-
-    Object.keys(jingles[jinglename].destinations).forEach(function (destinationkey) {
-        if (mounts[destinationkey]) {
-            if (!mounts[destinationkey]._.source._ || mounts[destinationkey]._.source.destinations[destinationkey].priority < jingles[jinglename].destinations[destinationkey].priority) {
-                if (mounts[destinationkey]._.source && mounts[destinationkey]._.source._) {
-                    log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source.url + ' to ' + jingles[jinglename].url);
-                } else {
-                    log('Switched ' + destinationkey + ' from none to ' + jingles[jinglename].url);
-                }
-                mounts[destinationkey]._.source = jingles[jinglename];
-                usable = true;
-            }
-        }
-    });
-
-    if (usable === true) {
-        jingles[jinglename]._.proc.stdout.on('data', function (chunk) {
-            Object.keys(jingles[jinglename].destinations).forEach(function (destinationkey) {
-                if (mounts[destinationkey] && mounts[destinationkey]._ && mounts[destinationkey]._.source && mounts[destinationkey]._.source._) {
-                    if (mounts[destinationkey]._.source._.id === jingles[jinglename]._.id) {
-                        if (mounts[destinationkey]._.proc.stdin.writable) {
-                            mounts[destinationkey]._.desynced = !mounts[destinationkey]._.proc.stdin.write(chunk);
-                        }
-                    }
-                }
-            });
-        });
-    }
-    jingles[jinglename]._.proc.once('close', function () {
-        Object.keys(jingles[jinglename].destinations).forEach(function (destinationkey) {
-            if (mounts[destinationkey] && mounts[destinationkey]._.source && mounts[destinationkey]._.source._ && mounts[destinationkey]._.source._.id === jingles[jinglename]._.id) {
-                mounts[destinationkey]._.source = {};
-                log('Switched ' + destinationkey + ' from ' + jingles[jinglename].url + ' to none');
-            }
-        });
-        if (typeof callback === 'function') {
-            callback();
-        }
-    });
-    if (usable === false) {
-        jingles[jinglename]._.proc.kill();
-    }
 };
 
 var server = http.createServer(function (req, res) {
@@ -722,15 +596,22 @@ var server = http.createServer(function (req, res) {
         }
 
         res.writeHead(200, headers);
-        mounts[req.url]._.clients[clientid] = {'unsynced': false, 'req': req, 'res': res};
+        mounts[req.url]._.clients[clientid] = {'req': req, 'res': res};
+        var streamdatacallback = function (chunk) {
+            if (res.writable === true && !res.socket._writableState.length) {
+                res.write(chunk);
+            }
+        };
+        mountstreamsout[mountpoint].on('data', streamdatacallback);
         res.once('close', function () {
+            mountstreamsout[mountpoint].removeListener('data', streamdatacallback);
             log(clientid + ' disconnected from mountpoint ' + req.url + ' after ' + (((new Date()) - connecttime) / 1000) + 's');
             delete mounts[req.url]._.clients[clientid];
         });
     }
 });
 
-Object.keys(jingles).forEach(function (jinglekey) {
+/*Object.keys(jingles).forEach(function (jinglekey) {
     log('Setting up jingle ' + jinglekey);
     Object.keys(jingles[jinglekey].destinations).forEach(function (destinationkey) {
         if (typeof jingles[jinglekey].destinations[destinationkey].priority !== 'number') {
@@ -748,7 +629,7 @@ Object.keys(jingles).forEach(function (jinglekey) {
             });
         }
     }
-});
+});*/
 
 Object.keys(mounts).forEach(function (mountpoint) {
     log('Spawning mount(' + mountpoint + ')');
@@ -756,13 +637,15 @@ Object.keys(mounts).forEach(function (mountpoint) {
 });
 
 Object.keys(sources).forEach(function (sourcekey) {
-    log('Spawning source(' + sourcekey + ')');
     Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
         if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
             sources[sourcekey].destinations[destinationkey].priority = 0;
         }
     });
-    source(sourcekey);
+    if (!sources[sourcekey].isjingle) {
+        log('Spawning source(' + sourcekey + ')');
+        source(sourcekey);
+    }
 });
 
 server.listen(config.server.port, config.server.ip);
