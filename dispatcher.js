@@ -4,7 +4,7 @@
 
 // Configuration (Modify these to your needs)
 var config = {
-    version: '0.0.6',
+    version: '0.1.2',
     ip: '0.0.0.0',
     port: 8000,
     maxclients: 10,

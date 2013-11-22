@@ -5,8 +5,8 @@
 // Configuration (Modify these to your needs)
 var config = {
     global: {
-        version: '0.0.6',
-        converterpath: '/usr/bin/ffmpeg',
+        version: '0.1.2',
+        converterpath: '/usr/local/bin/ffmpeg',
         convertsamplerate: 48000
     },
     server: {
@@ -61,12 +61,13 @@ var mounts = {
         allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
     },
     '/main-128.aac': {
+        debug: true,
         name: 'RaveOne.FM Mainstream AAC',
         url: 'http://raveone.fm/',
         genre: 'RaveOne.FM Mainstream AAC',
-        bitrate: 128,
+        bitrate: 64,
         samplerate: 44100,
-        codec: 'aac',
+        codec: 'libaacplus',
         format: 'adts',
         metaint: 8192,
         contenttype: 'audio/x-aac',
@@ -78,22 +79,10 @@ var mounts = {
         genre: 'RaveOne.FM Mainstream Low-AAC',
         bitrate: 64,
         samplerate: 44100,
-        codec: 'aac',
+        codec: 'libaacplus',
         format: 'adts',
         metaint: 8192,
         contenttype: 'audio/x-aac',
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    },
-    '/main-175.ogg': {
-        name: 'RaveOne.FM Mainstream Ogg',
-        url: 'http://raveone.fm/',
-        genre: 'RaveOne.FM Mainstream Ogg',
-        bitrate: 175,
-        samplerate: 44100,
-        codec: 'vorbis',
-        format: 'ogg',
-        metaint: 8192,
-        contenttype: 'audio/ogg',
         allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
     }
 };
@@ -121,9 +110,6 @@ var sources = {
             },
             '/main-64.aac': {
                 priority: 10
-            },
-            '/main-175.ogg': {
-                priority: 10
             }
         }
     },
@@ -143,9 +129,6 @@ var sources = {
                 priority: 9
             },
             '/main-64.aac': {
-                priority: 9
-            },
-            '/main-175.ogg': {
                 priority: 9
             }
         }
@@ -167,9 +150,6 @@ var sources = {
                 priority: 9
             },
             '/main-64.aac': {
-                priority: 9
-            },
-            '/main-175.ogg': {
                 priority: 9
             }
         }
@@ -278,13 +258,15 @@ var mount = function (mountpoint) {
 
     options.push('-flags2', 'local_header');
 
-    options.push('-preset', 'ultrafast');
-
     options.push('-strict', '-2');
 
     options.push('pipe:1');
 
     proc = child_process.spawn(config.global.converterpath, options);
+    
+    proc.once('error', function (e) {
+        log(e);
+    });
 
     if (mounts[mountpoint].debug === true || config.global.debug === true) {
         proc.stderr.on('data', function (chunk) {
@@ -314,7 +296,8 @@ var source = function (sourcename) {
     var suicide = false,
         options = [],
         proc = false,
-        timeout = false;
+        timeout = false,
+        docallback = false;
     sources[sourcename]._ = {};
     sources[sourcename]._.id = sourcename + '_' + uniqid('', true);
 
@@ -360,8 +343,6 @@ var source = function (sourcename) {
 
     options.push('-f', 'flac');
 
-    options.push('-preset', 'ultrafast');
-
     options.push('-sample_fmt', 's16');
 
     options.push('-sn', '-vn');
@@ -382,6 +363,7 @@ var source = function (sourcename) {
 
     proc.stdout.once('data', function (chunk) {
         var firstchunk = chunk;
+        docallback = true;
         proc.stdout.on('data', function (chunk) {
             if (suicide === true) {
                 return;
@@ -421,7 +403,7 @@ var source = function (sourcename) {
                         }
                     });
                     proc.kill();
-                    if (typeof sources[sourcename].callback === 'function') {
+                    if (typeof sources[sourcename].callback === 'function' && docallback) {
                         sources[sourcename].callback();
                     } else {
                         setTimeout(function () {
@@ -443,7 +425,7 @@ var source = function (sourcename) {
                 log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
             }
         });
-        if (typeof sources[sourcename].callback === 'function') {
+        if (typeof sources[sourcename].callback === 'function' && docallback) {
             sources[sourcename].callback();
         } else {
             setTimeout(function () {
