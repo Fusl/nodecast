@@ -5,7 +5,6 @@
 // Configuration (Modify these to your needs)
 var config = {
     global: {
-        version: '0.1.2',
         converterpath: '/usr/local/bin/ffmpeg',
         convertsamplerate: 48000
     },
@@ -61,7 +60,6 @@ var mounts = {
         allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
     },
     '/main-128.aac': {
-        debug: true,
         name: 'RaveOne.FM Mainstream AAC',
         url: 'http://raveone.fm/',
         genre: 'RaveOne.FM Mainstream AAC',

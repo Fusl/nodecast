@@ -4,7 +4,6 @@
 
 // Configuration (Modify these to your needs)
 var config = {
-    version: '0.1.2',
     ip: '0.0.0.0',
     port: 8000,
     maxclients: 10,
@@ -61,7 +60,7 @@ var mounts = {
 
 var functions = require('./functions.js');
 var http = functions.http;
-var in_array = functions.http;
+var in_array = functions.in_array;
 var os = functions.os;
 var icystring = functions.icystring;
 var util = functions.util;
