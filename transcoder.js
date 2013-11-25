@@ -193,79 +193,85 @@ var mount = function (mountpoint) {
         mountstreamsout[mountpoint] = new Streampass();
         mountstreamsout[mountpoint].setMaxListeners(0);
     }
-
+    
     if (mounts[mountpoint].debug !== true && config.global.debug !== true) {
         options.push('-loglevel', 'quiet');
     }
-
-    options.push('-acodec', 'flac');
-
-    if (typeof mounts[mountpoint].analyzeduration === 'number' && mounts[mountpoint].analyzeduration >= 0 && parseInt(mounts[mountpoint].analyzeduration, 0) === mounts[mountpoint].analyzeduration) {
-        options.push('-analyzeduration', mounts[mountpoint].analyzeduration);
-    } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
-        options.push('-analyzeduration', config.global.analyzeduration);
-    } else {
-        options.push('-analyzeduration', 5000);
-    }
-
-    options.push('-f', 'flac');
     
-    options.push('-re');
-
-    options.push('-i', 'pipe:0');
-
-    if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
-        options.push('-ab', mounts[mountpoint].bitrate + 'k');
-    } else if (typeof config.global.bitrate === 'number' && config.global.bitrate > 0 && parseInt(config.global.bitrate, 0) === config.global.bitrate) {
-        options.push('-ab', config.global.bitrate);
+    if (typeof mounts[mountpoint].options === 'object' && mounts[mountpoint].options instanceof Array) {
+        options = mounts[mountpoint].options;
     } else {
-        options.push('-ab', '128k');
+        options.push('-acodec', 'flac');
+        
+        if (typeof mounts[mountpoint].analyzeduration === 'number' && mounts[mountpoint].analyzeduration >= 0 && parseInt(mounts[mountpoint].analyzeduration, 0) === mounts[mountpoint].analyzeduration) {
+            options.push('-analyzeduration', mounts[mountpoint].analyzeduration);
+        } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
+            options.push('-analyzeduration', config.global.analyzeduration);
+        } else {
+            options.push('-analyzeduration', 5000);
+        }
+        
+        options.push('-f', 'flac');
+        
+        options.push('-re');
+        
+        options.push('-i', 'pipe:0');
+        
+        if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
+            options.push('-ab', mounts[mountpoint].bitrate + 'k');
+        } else if (typeof config.global.bitrate === 'number' && config.global.bitrate > 0 && parseInt(config.global.bitrate, 0) === config.global.bitrate) {
+            options.push('-ab', config.global.bitrate);
+        } else {
+            options.push('-ab', '128k');
+        }
+        
+        if (typeof mounts[mountpoint].channels === 'number' && mounts[mountpoint].channels > 0 && parseInt(mounts[mountpoint].channels, 0) === mounts[mountpoint].channels) {
+            options.push('-ac', mounts[mountpoint].channels);
+        } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
+            options.push('-ac', config.global.channels);
+        } else {
+            options.push('-ac', 2);
+        }
+        
+        if (typeof mounts[mountpoint].codec === 'string' && mounts[mountpoint].codec.trim() !== '') {
+            options.push('-acodec', mounts[mountpoint].codec);
+        } else if (typeof config.global.codec === 'string' && config.global.codec.trim() !== '') {
+            options.push('-acodec', config.global.codec);
+        } else {
+            options.push('-acodec', 'libmp3lame');
+        }
+        
+        if (typeof mounts[mountpoint].samplerate === 'number' && mounts[mountpoint].samplerate > 0 && parseInt(mounts[mountpoint].samplerate, 0) === mounts[mountpoint].samplerate) {
+            options.push('-ar', mounts[mountpoint].samplerate);
+        } else if (typeof config.global.samplerate === 'number' && config.global.samplerate > 0 && parseInt(config.global.samplerate, 0) === config.global.samplerate) {
+            options.push('-ar', config.global.samplerate);
+        } else {
+            options.push('-ar', 48000);
+        }
+        
+        if (typeof mounts[mountpoint].format === 'string' && mounts[mountpoint].format.trim() !== '') {
+            options.push('-f', mounts[mountpoint].format);
+        } else if (typeof config.global.format === 'string' && config.global.format.trim() !== '') {
+            options.push('-f', config.global.format);
+        } else {
+            options.push('-f', 'mp3');
+        }
+        
+        options.push('-flags2', 'local_header');
+        
+        options.push('-strict', '-2');
+        
+        options.push('pipe:1');
+        
+        mounts[mountpoint].options = options;
     }
-
-    if (typeof mounts[mountpoint].channels === 'number' && mounts[mountpoint].channels > 0 && parseInt(mounts[mountpoint].channels, 0) === mounts[mountpoint].channels) {
-        options.push('-ac', mounts[mountpoint].channels);
-    } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
-        options.push('-ac', config.global.channels);
-    } else {
-        options.push('-ac', 2);
-    }
-
-    if (typeof mounts[mountpoint].codec === 'string' && mounts[mountpoint].codec.trim() !== '') {
-        options.push('-acodec', mounts[mountpoint].codec);
-    } else if (typeof config.global.codec === 'string' && config.global.codec.trim() !== '') {
-        options.push('-acodec', config.global.codec);
-    } else {
-        options.push('-acodec', 'libmp3lame');
-    }
-
-    if (typeof mounts[mountpoint].samplerate === 'number' && mounts[mountpoint].samplerate > 0 && parseInt(mounts[mountpoint].samplerate, 0) === mounts[mountpoint].samplerate) {
-        options.push('-ar', mounts[mountpoint].samplerate);
-    } else if (typeof config.global.samplerate === 'number' && config.global.samplerate > 0 && parseInt(config.global.samplerate, 0) === config.global.samplerate) {
-        options.push('-ar', config.global.samplerate);
-    } else {
-        options.push('-ar', 48000);
-    }
-
-    if (typeof mounts[mountpoint].format === 'string' && mounts[mountpoint].format.trim() !== '') {
-        options.push('-f', mounts[mountpoint].format);
-    } else if (typeof config.global.format === 'string' && config.global.format.trim() !== '') {
-        options.push('-f', config.global.format);
-    } else {
-        options.push('-f', 'mp3');
-    }
-
-    options.push('-flags2', 'local_header');
-
-    options.push('-strict', '-2');
-
-    options.push('pipe:1');
-
-    proc = child_process.spawn(config.global.converterpath, options);
+    
+    proc = child_process.spawn(mounts[mountpoint].converterpath, options);
     
     proc.once('error', function (e) {
         log(e);
     });
-
+    
     if (mounts[mountpoint].debug === true || config.global.debug === true) {
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
@@ -281,7 +287,7 @@ var mount = function (mountpoint) {
             proc.stdin.write(chunk);
         }
     });
-
+    
     proc.once('close', function () {
         mount(mountpoint);
     });
@@ -298,67 +304,73 @@ var source = function (sourcename) {
         docallback = false;
     sources[sourcename]._ = {};
     sources[sourcename]._.id = sourcename + '_' + uniqid('', true);
-
-    if (sources[sourcename].debug !== true && config.global.debug !== true) {
-        options.push('-loglevel', 'quiet');
-    }
-
-    if (typeof sources[sourcename].analyzeduration === 'number' && sources[sourcename].analyzeduration >= 0 && parseInt(sources[sourcename].analyzeduration, 0) === sources[sourcename].analyzeduration) {
-        options.push('-analyzeduration', mounts[sourcename].analyzeduration);
-    } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
-        options.push('-analyzeduration', config.global.analyzeduration);
+    
+    if (typeof sources[sourcename].options === 'object' && sources[sourcename].options instanceof Array) {
+        options = sources[sourcename].options;
     } else {
-        options.push('-analyzeduration', 5000);
+        if (sources[sourcename].debug !== true && config.global.debug !== true) {
+            options.push('-loglevel', 'quiet');
+        }
+        
+        if (typeof sources[sourcename].analyzeduration === 'number' && sources[sourcename].analyzeduration >= 0 && parseInt(sources[sourcename].analyzeduration, 0) === sources[sourcename].analyzeduration) {
+            options.push('-analyzeduration', mounts[sourcename].analyzeduration);
+        } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
+            options.push('-analyzeduration', config.global.analyzeduration);
+        } else {
+            options.push('-analyzeduration', 5000);
+        }
+        
+        if (sources[sourcename].nativerate === true || config.global.nativerate === true) {
+            options.push('-re');
+        }
+        
+        if (typeof sources[sourcename].url === 'string' && sources[sourcename].url.trim() !== '') {
+            options.push('-i', sources[sourcename].url);
+        } else if (typeof config.global.url === 'string' && config.global.url.trim() !== '') {
+            options.push('-i', config.global.url);
+        } else {
+            options.push('-i', 'http://mp3.tb-stream.net/');
+        }
+        
+        if (typeof sources[sourcename].channels === 'number' && sources[sourcename].channels > 0 && parseInt(sources[sourcename].channels, 0) === sources[sourcename].channels) {
+            options.push('-ac', sources[sourcename]);
+        } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
+            options.push('-ac', config.global.channels);
+        } else {
+            options.push('-ac', 2);
+        }
+        
+        options.push('-acodec', 'flac');
+        
+        if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
+            options.push('-ar', config.global.convertsamplerate);
+        } else {
+            options.push('-ar', 48000);
+        }
+        
+        options.push('-f', 'flac');
+        
+        options.push('-sample_fmt', 's16');
+        
+        options.push('-sn', '-vn');
+        
+        options.push('pipe:1');
+        
+        sources[sourcename].options = options;
     }
-
-    if (sources[sourcename].nativerate === true || config.global.nativerate === true) {
-        options.push('-re');
-    }
-
-    if (typeof sources[sourcename].url === 'string' && sources[sourcename].url.trim() !== '') {
-        options.push('-i', sources[sourcename].url);
-    } else if (typeof config.global.url === 'string' && config.global.url.trim() !== '') {
-        options.push('-i', config.global.url);
-    } else {
-        options.push('-i', 'http://mp3.tb-stream.net/');
-    }
-
-    if (typeof sources[sourcename].channels === 'number' && sources[sourcename].channels > 0 && parseInt(sources[sourcename].channels, 0) === sources[sourcename].channels) {
-        options.push('-ac', sources[sourcename]);
-    } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
-        options.push('-ac', config.global.channels);
-    } else {
-        options.push('-ac', 2);
-    }
-
-    options.push('-acodec', 'flac');
-
-    if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
-        options.push('-ar', config.global.convertsamplerate);
-    } else {
-        options.push('-ar', 48000);
-    }
-
-    options.push('-f', 'flac');
-
-    options.push('-sample_fmt', 's16');
-
-    options.push('-sn', '-vn');
-
-    options.push('pipe:1');
-
-    proc = child_process.spawn(config.global.converterpath, options);
-
+    
+    proc = child_process.spawn(sources[sourcename].converterpath, options);
+    
     if (sources[sourcename].debug === true || config.global.debug === true) {
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
     }
-
+    
     if (typeof sources[sourcename].timeout === 'number' && sources[sourcename].timeout > 0 && parseInt(sources[sourcename].timeout, 0) === sources[sourcename].timeout) {
         timeout = {};
     }
-
+    
     proc.stdout.once('data', function (chunk) {
         var firstchunk = chunk;
         docallback = true;
@@ -489,7 +501,7 @@ var server = http.createServer(function (req, res) {
             'connection': 'close'
         });
         //res.end(JSON.stringify({'config':config,'mounts':mounts,'sources':sources,'jingles':jingles}));
-        res.end(util.format('%j', {'config': config, 'mounts': mounts, 'sources': sources, 'jingles': jingles}));
+        res.end(util.format('%j', {'config': config, 'mounts': mounts, 'sources': sources}));
     } else if (config.statuspage &&
                config.statuspage.inspect &&
                config.statuspage.inspect.path &&
@@ -504,7 +516,7 @@ var server = http.createServer(function (req, res) {
             'content-type': 'application/json',
             'connection': 'close'
         });
-        res.end(util.inspect({'config': config, 'mounts': mounts, 'sources': sources, 'jingles': jingles}, config.statuspage.inspect.options));
+        res.end(util.inspect({'config': config, 'mounts': mounts, 'sources': sources}, config.statuspage.inspect.options));
     } else if (!mounts[req.url] ||
                (!in_array('*', mounts[req.url].allowedips) &&
                 !in_array('0.0.0.0', mounts[req.url].allowedips) &&
@@ -522,15 +534,15 @@ var server = http.createServer(function (req, res) {
             noticenum = 0;
         log(clientid + ' connected to mountpoint ' + req.url);
         res.sendDate = false;
-
+        
         headers.connection = 'close';
-
+        
         if (typeof mounts[mountpoint].contenttype === 'string' && mounts[mountpoint].contenttype.trim() !== '') {
             headers['content-type'] = mounts[mountpoint].contenttype;
         } else if (typeof config.global.contenttype === 'string' && config.global.contenttype.trim() !== '') {
             headers['content-type'] = config.global.contenttype;
         }
-
+        
         if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
             headers['icy-br'] = mounts[mountpoint].bitrate;
         } else if (typeof config.global.bitrate === 'number' && config.global.bitrate > 0 && parseInt(config.global.bitrate, 0) === config.global.bitrate) {
@@ -538,19 +550,19 @@ var server = http.createServer(function (req, res) {
         } else {
             headers['icy-br'] = 128;
         }
-
+        
         if (typeof mounts[mountpoint].genre === 'string' && mounts[mountpoint].genre.trim() !== '') {
             headers['icy-genre'] = mounts[mountpoint].genre;
         } else if (typeof config.global.genre === 'string' && config.global.genre !== '') {
             headers['icy-genre'] = config.global.genre;
         }
-
+        
         if (typeof mounts[mountpoint].metaint === 'number' && mounts[mountpoint].metaint > 0 && parseInt(mounts[mountpoint].metaint, 0) === mounts[mountpoint].metaint) {
             headers['icy-metaint'] = mounts[mountpoint].metaint;
         } else if (typeof config.global.metaint === 'number' && config.global.metaint > 0 && parseInt(config.global.metaint, 0) === config.global.metaint) {
             headers['icy-br'] = config.global.metaint;
         }
-
+        
         if (typeof mounts[mountpoint].name === 'string' && mounts[mountpoint].name.trim() !== '') {
             headers['icy-name'] = mounts[mountpoint].name;
         } else if (typeof config.global.name === 'string' && config.global.name !== '') {
@@ -558,7 +570,7 @@ var server = http.createServer(function (req, res) {
         } else {
             headers['icy-name'] = mountpoint;
         }
-
+        
         if (mounts[req.url].notices) {
             Object.keys(mounts[req.url].notices).forEach(function (notice) {
                 noticenum++;
@@ -566,7 +578,7 @@ var server = http.createServer(function (req, res) {
             });
         }
         headers['icy-pub'] = ((mounts[req.url].ispublic || config.global.ispublic) ? 1 : 0);
-
+        
         if (typeof mounts[mountpoint].url === 'string' && mounts[mountpoint].url.trim() !== '') {
             headers['icy-url'] = mounts[mountpoint].url;
         } else if (typeof config.global.url === 'string' && config.global.url !== '') {
@@ -574,7 +586,7 @@ var server = http.createServer(function (req, res) {
         } else {
             headers['icy-url'] = req.headers.host + mountpoint;
         }
-
+        
         res.writeHead(200, headers);
         mounts[req.url]._.clients[clientid] = {'req': req, 'res': res};
         var streamdatacallback = function (chunk) {
@@ -591,28 +603,15 @@ var server = http.createServer(function (req, res) {
     }
 });
 
-/*Object.keys(jingles).forEach(function (jinglekey) {
-    log('Setting up jingle ' + jinglekey);
-    Object.keys(jingles[jinglekey].destinations).forEach(function (destinationkey) {
-        if (typeof jingles[jinglekey].destinations[destinationkey].priority !== 'number') {
-            jingles[jinglekey].destinations[destinationkey].priority = 0;
-        }
-    });
-    if (typeof jingles[jinglekey].listen === 'string' && jingles[jinglekey].listen.trim() !== '') {
-        if (jingles[jinglekey].listen === 'SIGUSR2') {
-            process.on('SIGUSR2', function () {
-                if (typeof jingles[jinglekey].atHours === 'object' && in_array((new Date()).getHours(), jingles[jinglekey].atHours)) {
-                    if (typeof jingle === 'function') {
-                        jingle(jinglekey);
-                    }
-                }
-            });
-        }
-    }
-});*/
-
 Object.keys(mounts).forEach(function (mountpoint) {
     log('Spawning mount(' + mountpoint + ')');
+    if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
+        if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
+            mounts[mountpoint].converterpath = config.global.converterpath;
+        } else {
+            mounts[mountpoint].converterpath = '/usr/bin/ffmpeg';
+        }
+    }
     mount(mountpoint);
 });
 
@@ -622,6 +621,13 @@ Object.keys(sources).forEach(function (sourcekey) {
             sources[sourcekey].destinations[destinationkey].priority = 0;
         }
     });
+    if (typeof sources[sourcekey].converterpath !== 'string' || sources[sourcekey].converterpath.trim() === '') {
+        if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
+            sources[sourcekey].converterpath = config.global.converterpath;
+        } else {
+            sources[sourcekey].converterpath = '/usr/bin/ffmpeg';
+        }
+    }
     if (!sources[sourcekey].isjingle) {
         log('Spawning source(' + sourcekey + ')');
         source(sourcekey);
