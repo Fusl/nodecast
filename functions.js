@@ -85,11 +85,3 @@ functions.util.inherits(functions.streampass, functions.stream.Stream);
 functions.streampass.prototype.write = function (chunk) {
     this.emit('data', chunk);
 };
-
-functions.streampass.prototype.end = function () {
-    this.emit('end');
-};
-
-functions.streampass.prototype.destroy = function () {
-    this.emit('close');
-}
