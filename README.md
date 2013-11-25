@@ -27,11 +27,11 @@ var config = {
         },
         parseable: {
             path: '/status?json', // Specify the url-path of the parseable statuspage here
-            allowedips: [] // Which ips should be allowed to display the statuspages?
+            allowedips: []
         },
         inspect: {
             path: '/status?inspect', // Specify the url-path of the inspect statuspage here
-            allowedips: [], // Which ips should be allowed to display the statuspages?
+            allowedips: [],
             options: { // This options will be passed to util.inspect's options parameter
                 'showHidden': true,
                 'depth': null
@@ -40,7 +40,7 @@ var config = {
     }
 };
 var mounts = {
-    '/main-192.mp3': {
+    '/main-192.mp3': { // Each mount needs an unique id
         name: 'RaveOne.FM Mainstream 192k', // Specify the icy-name header value here
         url: 'http://raveone.fm/', // Specify the icy-url header value here
         genre: 'RaveOne.FM Mainstream 192k', // Specify the icy-genre header value here
@@ -67,7 +67,7 @@ var mounts = {
     }
 };
 var sources = {
-    'dj': {
+    'dj': { // Each source needs an unique id
         url: 'http://localhost:8080/', // Specify the url of an audio streaming server (e.g. the server.js process) here
         retrywait: 100, // How long to wait after the dj disconnects/times out before reconnecting
         callback: function () {
@@ -114,6 +114,67 @@ var sources = {
                 priority: 9
             }
         }
+    }
+};
+```
+
+### dispatcher.js
+This program takes the stream from one or several transcoder-servers and allows the streams to be mapped to different location paths (e.g. /stream-192k.mp3 and /stream-96k.aac).
+The configuration works as follows:
+
+``` javascript
+var config = {
+    ip: '0.0.0.0', // On which ip should the transcoder listen for dispatchers and statuspage-clients?
+    port: 8000, // On which port should the transcoder listen for dispatchers and statuspage-clients?
+    maxclients: 10, // Specify the maximum number of overall clients here. If this number of clients are connected, all future clients will be dropped until a slot is free again
+    preventclientoverflow: true, // Should the writer discard/drop audio chunks when the client is not responding or reading the buffer anymore?
+    prebuffertime: 15000, // How long to prebuffer the data from the stream transcoder to prevent excessive buffering on the client side. When i client connects, this number of seconds will be passed instantly and then the stream will be passed in realtime again.
+    servecrossdomainxml: true, // Should the dispatcher serve a crossdomain.xml file? (Used for flash players, embedded in most websites)
+    servelistenpls: true, // Should the dispatcher serve a listen.pls file? This file contains all stream-urls until notinlistenpls is set on a specified mount.
+    statuspage: {
+        allowedips: ['127.0.0.1'], // Which ips should be allowed to display all the statuspages?
+        readable: {
+            path: '/status', // Specify the url-path of the readable statuspage here
+            allowedips: ['0.0.0.0'] // Which ips should be allowed to display the statuspages? Keep in mind that each can see others ip addresses so don't really use 0.0.0.0 here!
+        },
+        parseable: {
+            path: '/status?json',
+            allowedips: []
+        },
+        inspect: {
+            path: '/status?inspect', // Specify the url-path of the inspect statuspage here
+            allowedips: [],
+            options: { // This options will be passed to util.inspect's options parameter
+                'showHidden': true,
+                'depth': null
+            }
+        },
+        mountslist: {
+            path: '/mountslist', // Specify the url-path of the mountslist statuspage here
+            allowedips: ['10.135.0.3']
+        }
+    }
+};
+var mounts = {
+    '/main-192.mp3': { // Each mount needs an unique id
+        url: 'http://localhost:7777/main-192.mp3', // Specify the url to the transcoder here (format should be http://transcoderip:transcoderport/transcodermountpoint)
+        metaurl: 'http://localhost/meta.php?stream=main-192', // Specify the url to the metadata-server, from where to get the metadata, displayed in the player, here
+        maxclients: 10 // Each mountpoint can also have his own maxclients, but not more then the global one.
+    },
+    '/main-128.mp3': {
+        url: 'http://localhost:7777/main-128.mp3',
+        metaurl: 'http://localhost/meta.php?stream=main-128',
+        maxclients: 10
+    },
+    '/main-128.aac': {
+        url: 'http://localhost:7777/main-128.aac',
+        metaurl: 'http://localhost/meta.php?stream=main-aac',
+        maxclients: 10
+    },
+    '/main-64.aac': {
+        url: 'http://localhost:7777/main-64.aac',
+        metaurl: 'http://localhost/meta.php?stream=main-64.aac',
+        maxclients: 10
     }
 };
 ```
