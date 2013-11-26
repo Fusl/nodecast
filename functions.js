@@ -19,7 +19,7 @@ functions.os = require('os');
 functions.path = require("path");
 functions.util = require('util');
 functions.stream = require('stream');
-
+functions.url = require('url');
 
 functions.exec = functions.child_process.exec;
 functions.spawn = functions.child_process.spawn;
@@ -85,4 +85,22 @@ functions.util.inherits(functions.streampass, functions.stream.Stream);
 
 functions.streampass.prototype.write = function (chunk) {
     this.emit('data', chunk);
+};
+
+functions.streampass.prototype.end = function () {
+    this.emit('end');
+};
+
+functions.unrefcopy = function (inputObject) {
+    if (!(inputObject instanceof Object)) {
+        return inputObject;
+    }
+    if (inputObject instanceof Array) {
+        return inputObject.slice(0);
+    }
+    var outputObject = {};
+    Object.keys(inputObject).forEach(function (key) {
+        outputObject[key] = functions.unrefcopy(inputObject[key]);
+    });
+    return outputObject;
 };
