@@ -6,6 +6,7 @@
             "listenshoutcastport": 4001,
             "listenicecastport": 4000,
             "listencontrolport": 4002,
+            "listenport": 4141,
             "master": true
         },
         "userapi": "http://localhost/userapi.php"

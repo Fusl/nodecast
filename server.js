@@ -1,7 +1,5 @@
 #!/usr/bin/env node
 
-// THIS NODECAST PROGRAM IS STILL UNFINISHED AND COULD CAUSE YOUR SERVER TO CRASH, BURN OR VANISH!!!
-
 'use strict';
 /*jslint
    browser: false, devel: false, node: true, rhino: false, passfail: false,
@@ -18,14 +16,27 @@ var http = functions.http;
 var net = functions.net;
 var util = functions.util;
 var trimnl = functions.trimnl;
+var url = functions.url;
+var unrefcopy = functions.unrefcopy;
+var Streampass = functions.streampass;
+
+var stream = new Streampass();
 
 var userapi = function (authstring, method, callback) {
-    callback(3);
-};
-
-var passstream = function (chunk) {
-    Object.keys(passclients).forEach(function (passclientkey) {
-        passclients[passclientkey].res.write(chunk);
+    var resBody = '',
+        urlform = unrefcopy(config.userapi);
+    urlform.query.authstring = authstring;
+    urlform.query.method = method;
+    http.get(url.format(urlform), function (res) {
+        res.on('data', function (chunk) {
+            resBody += chunk;
+        });
+        res.once('end', function () {
+            callback(parseInt(resBody, 0));
+        });
+    }).on('error', function (e) {
+        console.log(e);
+        callback(1);
     });
 };
 
@@ -44,18 +55,30 @@ var passoutgoing = http.createServer(function (req, res) {
         var authb64string = authheader.split(' ')[1];
         if (authb64string) {
             var authrawstring = new Buffer(authb64string, 'base64').toString();
-            userapi(authrawstring, 'listen', function () {
-                var userid = Math.random().toString(16) + Math.random().toString(16);
-                passclients[userid] = {'req': req, 'res': res};
-                req.once('close', function () {
-                    delete passclients[userid];
-                });
+            userapi(authrawstring, 'listen', function (success) {
+                if (success !== 1) {
+                    req.socket.destroy();
+                } else {
+                    var streamdatacallback = function (chunk) {
+                        if (res.writable === true) {
+                            res.write(chunk);
+                        }
+                    };
+                    var streamendcallback = function () {
+                        stream.removeListener('data', streamdatacallback);
+                        req.socket.destroy();
+                    };
+                    stream.on('data', streamdatacallback);
+                    res.once('close', function () {
+                        stream.removeListener('data', streamdatacallback);
+                    });
+                }
             });
         } else {
-            req.end();
+            req.socket.destroy();
         }
     } else {
-        req.end();
+        req.socket.destroy();
     }
 });
 
@@ -63,7 +86,11 @@ var incoming = function (allowness, c, sourcetype) {
     if (source) {
         if (allowness > 1) {
             source.once('close', function () {
-                passincoming(c);
+                source = c;
+                c.on('close', function () {
+                    source = false;
+                });
+                c.pipe(stream);
                 if (sourcetype === 'shoutcast') {
                     c.write('OK\n');
                 }
@@ -74,7 +101,11 @@ var incoming = function (allowness, c, sourcetype) {
         }
     } else {
         if (allowness > 0) {
-            passincoming(c);
+            source = c;
+            c.on('close', function () {
+                source = false;
+            });
+            c.pipe(stream);
             if (sourcetype === 'shoutcast') {
                 c.write('OK\n');
             }
@@ -82,16 +113,6 @@ var incoming = function (allowness, c, sourcetype) {
             c.destroy();
         }
     }
-};
-
-var passincoming = function (c) {
-    source = c;
-    c.on('close', function () {
-        source = false;
-    });
-    c.on('data', function (chunk) {
-        passstream(chunk);
-    });
 };
 
 var shoutcastincoming = net.createServer(function (c) {
@@ -168,6 +189,16 @@ var init = function () {
         }, 1000);
     });
     shoutcastincoming.listen(config.server.listenshoutcastport, config.server.listenip);
+    passoutgoing.on('listening', function () {
+        console.log('passoutgoing listening on ' + config.server.listenip + ':' + config.server.listenport);
+    });
+    passoutgoing.on('error', function (e) {
+        console.log(e);
+        setTimeout(function () {
+            passoutgoing.listen(config.server.listenport, config.server.listenip);
+        });
+    });
+    passoutgoing.listen(config.server.listenport, config.server.listenip);
 };
 
 var stdin = '';
@@ -176,6 +207,7 @@ process.stdin.on('data', function (chunk) {
 });
 process.stdin.on('close', function () {
     parseandsetconfig(stdin, function () {
+        config.userapi = url.parse(config.userapi, true);
         init();
     });
 });
