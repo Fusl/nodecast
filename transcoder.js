@@ -269,7 +269,6 @@ var source = function (sourcename, callbacktodo) {
                     if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
                         var nextcallback = callbacktodo.shift();
                         source(nextcallback, callbacktodo);
-                        sourcecb(callbacktodo);
                     } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
                         callbacktodo = sources[sourcename].callback.slice(0);
                         var nextcallback = callbacktodo.shift();
@@ -297,7 +296,6 @@ var source = function (sourcename, callbacktodo) {
         if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
             var nextcallback = callbacktodo.shift();
             source(nextcallback, callbacktodo);
-            sourcecb(callbacktodo);
         } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
             callbacktodo = sources[sourcename].callback.slice(0);
             var nextcallback = callbacktodo.shift();
@@ -308,10 +306,6 @@ var source = function (sourcename, callbacktodo) {
             }, (typeof sources[sourcename].retrywait === 'number' ? sources[sourcename].retrywait : 0));
         }
     });
-};
-
-var sourcecb = function (callback) {
-    var thiscallback = callback.shift();
 };
 
 var server = http.createServer(function (req, res) {
