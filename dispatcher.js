@@ -385,6 +385,15 @@ var clienting = function (mountpoint) {
     });
 };
 
+var parseandsetconfig = function (input, callback) {
+    input = JSON.parse(input);
+    config = input.config;
+    mounts = input.mounts;
+    if (typeof callback === 'function') {
+        callback();
+    }
+};
+
 var init = function () {
     Object.keys(mounts).forEach(function (mountpoint) {
         clienting(mountpoint);
@@ -421,3 +430,13 @@ var init = function () {
         });
     }, 1000);
 };
+
+var stdin = '';
+process.stdin.on('data', function (chunk) {
+    stdin += chunk;
+});
+process.stdin.on('close', function () {
+    parseandsetconfig(stdin, function () {
+        init();
+    });
+});
