@@ -1,36 +1,13 @@
 {
-	"server": {
-		"configpath": "/home/fusl/nodecast/server.json",
-		"listenip": "0.0.0.0",
-		"listenport": 4000,
-		"master": true
-	},
-	"users": {
-		"admin": {
-			"passwd": "6572bdaff799084b973320f43f09b363",
-			"acl": {
-				"configreload": true,
-				"configwrite": true,
-				"configread": true,
-				"kicklistener": true,
-				"kickstreamer": true,
-				"listen": true,
-				"restart": true,
-				"status": true,
-				"stream": true
-			}
-		},
-		"dj": {
-			"passwd": "aea65c2ffbb56f45e00feaccbbcd501c",
-			"acl": {
-				"stream": true
-			}
-		},
-		"listener": {
-			"passwd": "f6eedde70b3dad193edfcca7cf5753ef",
-			"acl": {
-				"listen": true
-			}
-		}
-	}
+    "config": {
+        "server": {
+            "configpath": "/home/fusl/nodecast/server.json",
+            "listenip": "0.0.0.0",
+            "listenshoutcastport": 4001,
+            "listenicecastport": 4000,
+            "listencontrolport": 4002,
+            "master": true
+        },
+        "userapi": "http://localhost/userapi.php"
+    }
 }

@@ -1,62 +1,17 @@
 #!/usr/bin/env node
 
-"use strict";
+'use strict';
+/*jslint
+   browser: false, devel: false, node: true, rhino: false, passfail: false,
+   bitwise: false, debug: false, eqeq: false, evil: false, forin: false,
+   newcap: false, nomen: true, plusplus: true, regexp: false, unparam: false,
+   sloppy: false, stupid: false, sub: false, vars: false, white: false,
+   indent: 4, maxlen: 256
+*/
 
 // Configuration (Modify these to your needs)
-var config = {
-    ip: '0.0.0.0',
-    port: 8000,
-    maxclients: 10,
-    preventclientoverflow: true,
-    prebuffertime: 15000,
-    servecrossdomainxml: true,
-    servelistenpls: true,
-    statuspage: {
-        allowedips: ['127.0.0.1'],
-        readable: {
-            path: '/status',
-            allowedips: ['10.135.192.26']
-        },
-        parseable: {
-            path: '/status?json',
-            allowedips: ['10.135.0.2']
-        },
-        inspect: {
-            path: '/status?inspect',
-            allowedips: ['10.135.0.1'],
-            options: {
-                'showHidden': true,
-                'depth': null
-            }
-        },
-        mountslist: {
-            path: '/mountslist',
-            allowedips: ['10.135.0.3']
-        }
-    }
-};
-var mounts = {
-    '/main-192.mp3': {
-        url: 'http://localhost:7777/main-192.mp3',
-        metaurl: 'http://localhost/meta.php?stream=main-192',
-        maxclients: 10
-    },
-    '/main-128.mp3': {
-        url: 'http://localhost:7777/main-128.mp3',
-        metaurl: 'http://localhost/meta.php?stream=main-128',
-        maxclients: 10
-    },
-    '/main-128.aac': {
-        url: 'http://localhost:7777/main-128.aac',
-        metaurl: 'http://localhost/meta.php?stream=main-aac',
-        maxclients: 10
-    },
-    '/main-64.aac': {
-        url: 'http://localhost:7777/main-64.aac',
-        metaurl: 'http://localhost/meta.php?stream=main-64.aac',
-        maxclients: 10
-    }
-};
+var config = {};
+var mounts = {};
 
 var functions = require('./functions.js');
 var http = functions.http;

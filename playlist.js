@@ -6,103 +6,8 @@
 /*jslint nomen: true*/
 
 // Configuration (Modify these to your needs)
-var config = {
-    'global': {
-        'converterpath': '/usr/bin/ffmpeg',
-        'convertsamplerate': 48000,
-        'rescaninterval': 60000
-    },
-    'server': {
-        'ip': '0.0.0.0',
-        'port': '6666',
-        'allowedips': ['127.0.0.1']
-    },
-    'statuspage': {
-        'allowedips': ['127.0.0.1'],
-        'readable': {
-            'path': '/status',
-            'allowedips': ['10.135.192.26']
-        },
-        'parseable': { // Calling this url crashes the entire process completely, because [Circular] elements can't be converted to json ("TypeError: Converting circular structure to JSON")
-            'path': '/status?json',
-            'allowedips': ['10.135.0.2']
-        },
-        'inspect': { // Only call this url if you really need to, because the processing of this call takes a very very very long time and often (nearly everytime) blocks the entire process until the inspection data is completely transmitted to the client!!!
-            'path': '/status?inspect',
-            'allowedips': ['10.135.0.1'],
-            'options': {
-                'showHidden': true,
-                'depth': null
-            }
-        }
-    }
-};
-var playlists = {
-    '/handsup': {
-        'directorymaps': {
-            'default': '/home/fusl/Music/sets/'
-        },
-        'calendarmaps': {
-            'fallback': 'default',
-            0: 'default',
-            1: 'default',
-            2: 'default',
-            3: 'default',
-            4: 'default',
-            5: 'default',
-            6: 'default',
-            7: 'default',
-            8: 'default',
-            9: 'default',
-            10: 'default',
-            11: 'default',
-            12: 'default',
-            13: 'default',
-            14: 'default',
-            15: 'default',
-            16: 'default',
-            17: 'default',
-            18: 'default',
-            19: 'default',
-            20: 'default',
-            21: 'default',
-            22: 'default',
-            23: 'default'
-        }
-    },
-    '/house': {
-        'directorymaps': {
-            'default': '/home/fusl/nodecast/playlists/house/'
-        },
-        'calendarmaps': {
-            'fallback': 'default',
-            0: 'default',
-            1: 'default',
-            2: 'default',
-            3: 'default',
-            4: 'default',
-            5: 'default',
-            6: 'default',
-            7: 'default',
-            8: 'default',
-            9: 'default',
-            10: 'default',
-            11: 'default',
-            12: 'default',
-            13: 'default',
-            14: 'default',
-            15: 'default',
-            16: 'default',
-            17: 'default',
-            18: 'default',
-            19: 'default',
-            20: 'default',
-            21: 'default',
-            22: 'default',
-            23: 'default'
-        }
-    }
-};
+var config = {};
+var playlists = {};
 
 var functions = require('./functions.js');
 var child_process = functions.child_process;
@@ -147,7 +52,7 @@ var getrandfile = function (playlistkey) {
     var directorymapkey = false;
     if (typeof playlists[playlistkey].calendarmaps[(new Date()).getHours()] === 'string') {
         directorymapkey = playlists[playlistkey].calendarmaps[(new Date()).getHours()];
-    } else if (typeof playlists[playlistkey].calendarmaps.falback === 'string') {
+    } else if (typeof playlists[playlistkey].calendarmaps.fallback === 'string') {
         directorymapkey = playlists[playlistkey].calendarmaps.fallback;
     } else if (typeof playlists[playlistkey].calendarmaps['default'] === 'string') {
         directorymapkey = playlists[playlistkey].calendarmaps['default'];
@@ -159,8 +64,6 @@ var getrandfile = function (playlistkey) {
     }
     return false;
 };
-
-rescan();
 
 var server = http.createServer(function (req, res) {
     if (req.method.toUpperCase() !== 'GET') {
@@ -258,9 +161,18 @@ var server = http.createServer(function (req, res) {
     }
 });
 
+var parseandsetconfig = function (input, callback) {
+    input = JSON.parse(input);
+    config = input.config;
+    playlists = input.playlists;
+    if (typeof callback === 'function') {
+        callback();
+    }
+};
+
 var init = function () {
+    rescan();
     server.listen(config.server.port, config.server.ip);
-    
     if (typeof config.global.rescaninterval === 'number' &&
         config.global.rescaninterval >= 0 &&
         parseInt(config.global.rescaninterval, 0) === config.global.rescaninterval) {
@@ -269,3 +181,22 @@ var init = function () {
         }, config.global.rescaninterval);
     }
 };
+
+var stdin = '';
+process.stdin.on('data', function (chunk) {
+    stdin += chunk;
+});
+process.stdin.on('close', function () {
+    parseandsetconfig(stdin, function () {
+        Object.keys(playlists).forEach(function (playlistkey) {
+            Object.keys(playlists[playlistkey].calendarmaps).forEach(function (calendarmapkey) {
+                if (calendarmapkey !== 'default' && calendarmapkey !== 'fallback') {
+                    var calendarmapvalue = playlists[playlistkey].calendarmaps[calendarmapkey];
+                    delete playlists[playlistkey].calendarmaps[calendarmapkey];
+                    playlists[playlistkey].calendarmaps[parseInt(calendarmapkey, 0)] = calendarmapvalue;
+                }
+            });
+        });
+        init();
+    });
+});

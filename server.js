@@ -11,17 +11,7 @@
    indent: 4, maxlen: 256
 */
 
-var config = {
-    'server': {
-        'configpath': '/home/fusl/nodecast/server.json',
-        'listenip': '0.0.0.0',
-        'listenshoutcastport': 4001,
-        'listenicecastport': 4000,
-        'listencontrolport': 4002,
-        'master': true,
-    },
-    'userapi': 'http://localhost/userapi.php'
-};
+var config = {};
 
 var functions = require('./functions.js');
 var http = functions.http;
@@ -102,7 +92,6 @@ var passincoming = function (c) {
     c.on('data', function (chunk) {
         passstream(chunk);
     });
-    console.log("passed");
 };
 
 var shoutcastincoming = net.createServer(function (c) {
@@ -115,7 +104,7 @@ var shoutcastincoming = net.createServer(function (c) {
             incoming(allowness, c, 'shoutcast');
         });
     });
-}).listen(config.server.listenshoutcastport, config.server.listenip);
+});
 
 var icecastincoming = net.createServer(function (c) {
     c.setTimeout(5000, function () {
@@ -150,8 +139,16 @@ var icecastincoming = net.createServer(function (c) {
     c.on('data', authlistener);
 });
 
+var parseandsetconfig = function (input, callback) {
+    input = JSON.parse(input);
+    config = input.config;
+    if (typeof callback === 'function') {
+        callback();
+    }
+};
+
 var init = function () {
-    icecastincoming.on('listen', function () {
+    icecastincoming.on('listening', function () {
         console.log('icecastincoming listening on ' + config.server.listenip + ':' + config.server.listenicecastport);
     });
     icecastincoming.on('error', function (e) {
@@ -161,7 +158,27 @@ var init = function () {
         }, 1000);
     });
     icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
+    shoutcastincoming.on('listening', function () {
+        console.log('shoutcastincoming listening on ' + config.server.listenip + ':' + config.server.listenshoutcastport);
+    });
+    shoutcastincoming.on('error', function (e) {
+        console.log(e);
+        setTimeout(function () {
+            shoutcastincoming.listen(config.server.listenshoutcastport, config.server.listenip);
+        }, 1000);
+    });
+    shoutcastincoming.listen(config.server.listenshoutcastport, config.server.listenip);
 };
+
+var stdin = '';
+process.stdin.on('data', function (chunk) {
+    stdin += chunk;
+});
+process.stdin.on('close', function () {
+    parseandsetconfig(stdin, function () {
+        init();
+    });
+});
 
 /*
 Examples from edcast:

@@ -1,6 +1,13 @@
 #!/usr/bin/env node
 
-"use strict";
+'use strict';
+/*jslint
+   browser: false, devel: false, node: true, rhino: false, passfail: false,
+   bitwise: false, debug: false, eqeq: false, evil: false, forin: false,
+   newcap: false, nomen: true, plusplus: true, regexp: false, unparam: false,
+   sloppy: false, stupid: false, sub: false, vars: false, white: false,
+   indent: 4, maxlen: 256
+*/
 
 // Configuration (Modify these to your needs)
 var config = {};

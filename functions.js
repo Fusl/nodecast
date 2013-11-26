@@ -14,6 +14,7 @@ module.exports = functions;
 functions.child_process = require('child_process');
 functions.fs = require('fs');
 functions.http = require('http');
+functions.net = require('net');
 functions.os = require('os');
 functions.path = require("path");
 functions.util = require('util');
