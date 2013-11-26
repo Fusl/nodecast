@@ -1,4 +1,4 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 
 "use strict";
 /*jslint maxlen: 1000 */
@@ -258,12 +258,14 @@ var server = http.createServer(function (req, res) {
     }
 });
 
-server.listen(config.server.port, config.server.ip);
-
-if (typeof config.global.rescaninterval === 'number' &&
-    config.global.rescaninterval >= 0 &&
-    parseInt(config.global.rescaninterval, 0) === config.global.rescaninterval) {
-    setInterval(function () {
-        rescan();
-    }, config.global.rescaninterval);
-}
+var init = function () {
+    server.listen(config.server.port, config.server.ip);
+    
+    if (typeof config.global.rescaninterval === 'number' &&
+        config.global.rescaninterval >= 0 &&
+        parseInt(config.global.rescaninterval, 0) === config.global.rescaninterval) {
+        setInterval(function () {
+            rescan();
+        }, config.global.rescaninterval);
+    }
+};

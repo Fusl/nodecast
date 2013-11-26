@@ -1,4 +1,4 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 
 // THIS NODECAST PROGRAM IS STILL UNFINISHED AND COULD CAUSE YOUR SERVER TO CRASH, BURN OR VANISH!!!
 
@@ -149,16 +149,19 @@ var icecastincoming = net.createServer(function (c) {
     };
     c.on('data', authlistener);
 });
-icecastincoming.on('listen', function () {
-    console.log('icecastincoming listening on ' + config.server.listenip + ':' + config.server.listenicecastport);
-});
-icecastincoming.on('error', function (e) {
-    console.log(e);
-    setTimeout(function () {
-        icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
-    }, 1000);
-});
-icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
+
+var init = function () {
+    icecastincoming.on('listen', function () {
+        console.log('icecastincoming listening on ' + config.server.listenip + ':' + config.server.listenicecastport);
+    });
+    icecastincoming.on('error', function (e) {
+        console.log(e);
+        setTimeout(function () {
+            icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
+        }, 1000);
+    });
+    icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
+};
 
 /*
 Examples from edcast:

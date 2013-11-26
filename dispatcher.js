@@ -1,4 +1,4 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 
 "use strict";
 
@@ -385,37 +385,39 @@ var clienting = function (mountpoint) {
     });
 };
 
-Object.keys(mounts).forEach(function (mountpoint) {
-    clienting(mountpoint);
-});
-
-setInterval(function () {
+var init = function () {
     Object.keys(mounts).forEach(function (mountpoint) {
-        if (mounts[mountpoint]._ &&
-            mounts[mountpoint]._.headers['icy-metaint'] &&
-            typeof mounts[mountpoint]._.headers['icy-metaint'] === 'number' &&
-            mounts[mountpoint]._.headers['icy-metaint'] > 0 &&
-            Math.floor(mounts[mountpoint]._.headers['icy-metaint']) === mounts[mountpoint]._.headers['icy-metaint']) {
-            
-            var metaurl = false;
-            if (typeof mounts[mountpoint].metaurl === 'string' && mounts[mountpoint].metaurl.trim() !== '') {
-                metaurl = mounts[mountpoint].metaurl;
-            } else if (typeof config.metaurl === 'string' && config.metaurl.trim() !== '') {
-                metaurl = config.metaurl;
-            }
-            if (metaurl) {
-                var metareqdata = '';
-                http.get(metaurl, function (res) {
-                    res.on('data', function (chunk) {
-                        metareqdata += chunk;
-                    });
-                    res.on('end', function () {
-                        mounts[mountpoint]._.meta = makemeta(metareqdata);
-                    });
-                }).on('error', function (e) {
-                    log('getting meta-info for '+mountpoint+' from '+mounts[mountpoint].metaurl+': '+e);
-                });
-            }
-        }
+        clienting(mountpoint);
     });
-}, 1000);
+    
+    setInterval(function () {
+        Object.keys(mounts).forEach(function (mountpoint) {
+            if (mounts[mountpoint]._ &&
+                mounts[mountpoint]._.headers['icy-metaint'] &&
+                typeof mounts[mountpoint]._.headers['icy-metaint'] === 'number' &&
+                mounts[mountpoint]._.headers['icy-metaint'] > 0 &&
+                Math.floor(mounts[mountpoint]._.headers['icy-metaint']) === mounts[mountpoint]._.headers['icy-metaint']) {
+                
+                var metaurl = false;
+                if (typeof mounts[mountpoint].metaurl === 'string' && mounts[mountpoint].metaurl.trim() !== '') {
+                    metaurl = mounts[mountpoint].metaurl;
+                } else if (typeof config.metaurl === 'string' && config.metaurl.trim() !== '') {
+                    metaurl = config.metaurl;
+                }
+                if (metaurl) {
+                    var metareqdata = '';
+                    http.get(metaurl, function (res) {
+                        res.on('data', function (chunk) {
+                            metareqdata += chunk;
+                        });
+                        res.on('end', function () {
+                            mounts[mountpoint]._.meta = makemeta(metareqdata);
+                        });
+                    }).on('error', function (e) {
+                        log('getting meta-info for '+mountpoint+' from '+mounts[mountpoint].metaurl+': '+e);
+                    });
+                }
+            }
+        });
+    }, 1000);
+};

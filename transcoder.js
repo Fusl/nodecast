@@ -1,158 +1,11 @@
-#!/usr/local/bin/node
+#!/usr/bin/env node
 
 "use strict";
 
 // Configuration (Modify these to your needs)
-var config = {
-    global: {
-        converterpath: '/usr/local/bin/ffmpeg',
-        convertsamplerate: 48000
-    },
-    server: {
-        ip: '0.0.0.0',
-        port: '7777',
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    },
-    statuspage: {
-        allowedips: ['127.0.0.1'],
-        readable: {
-            path: '/status',
-            allowedips: ['10.135.192.26']
-        },
-        parseable: {
-            path: '/status?json',
-            allowedips: ['10.135.0.2']
-        },
-        inspect: {
-            path: '/status?inspect',
-            allowedips: ['10.135.0.1'],
-            options: {
-                'showHidden': true,
-                'depth': null
-            }
-        }
-    }
-};
-var mounts = {
-    '/main-192.mp3': {
-        name: 'RaveOne.FM Mainstream 192k',
-        url: 'http://raveone.fm/',
-        genre: 'RaveOne.FM Mainstream 192k',
-        bitrate: 192,
-        samplerate: 48000,
-        codec: 'libmp3lame',
-        format: 'mp3',
-        metaint: 8192,
-        contenttype: 'audio/mpeg',
-        notices: ['This is', 'a', 'teststream'],
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    },
-    '/main-128.mp3': {
-        name: 'RaveOne.FM Mainstream 128k',
-        url: 'http://raveone.fm/',
-        genre: 'RaveOne.FM Mainstream 128k',
-        bitrate: 128,
-        samplerate: 44100,
-        codec: 'libmp3lame',
-        format: 'mp3',
-        metaint: 8192,
-        contenttype: 'audio/mpeg',
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    },
-    '/main-128.aac': {
-        name: 'RaveOne.FM Mainstream AAC',
-        url: 'http://raveone.fm/',
-        genre: 'RaveOne.FM Mainstream AAC',
-        bitrate: 64,
-        samplerate: 44100,
-        codec: 'libaacplus',
-        format: 'adts',
-        metaint: 8192,
-        contenttype: 'audio/x-aac',
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    },
-    '/main-64.aac': {
-        name: 'RaveOne.FM Mainstream Low-AAC',
-        url: 'http://raveone.fm/',
-        genre: 'RaveOne.FM Mainstream Low-AAC',
-        bitrate: 64,
-        samplerate: 44100,
-        codec: 'libaacplus',
-        format: 'adts',
-        metaint: 8192,
-        contenttype: 'audio/x-aac',
-        allowedips: ['127.0.0.1', '10.135.0.2', '10.135.192.26']
-    }
-};
-var sources = {
-    'dj': {
-        url: 'http://localhost:8080/',
-        retrywait: 100,
-        //jingleafterdisconnect: 'adjingle',
-        callback: function () {
-            source('adjingle', function () {
-                source('dj');
-            });
-        },
-        unsyncdiscard: true,
-        timeout: 1000,
-        destinations: {
-            '/main-192.mp3': {
-                priority: 10
-            },
-            '/main-128.mp3': {
-                priority: 10
-            },
-            '/main-128.aac': {
-                priority: 10
-            },
-            '/main-64.aac': {
-                priority: 10
-            }
-        }
-    },
-    'playlist': {
-        url: 'http://127.0.0.1:6666/handsup',
-        retrywait: 0,
-        unsyncdiscard: true,
-        timeout: 1000,
-        destinations: {
-            '/main-192.mp3': {
-                priority: 9
-            },
-            '/main-128.mp3': {
-                priority: 9
-            },
-            '/main-128.aac': {
-                priority: 9
-            },
-            '/main-64.aac': {
-                priority: 9
-            }
-        }
-    },
-    'adjingle': {
-        url: 'http://10.135.0.2/streamad/streamad.php',
-        isjingle: true,
-        listen: 'SIGUSR2',
-        nativerate: true,
-        atHours: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
-        destinations: {
-            '/main-192.mp3': {
-                priority: 9
-            },
-            '/main-128.mp3': {
-                priority: 9
-            },
-            '/main-128.aac': {
-                priority: 9
-            },
-            '/main-64.aac': {
-                priority: 9
-            }
-        }
-    }
-};
+var config = {};
+var mounts = {};
+var sources = {};
 
 var functions = require('./functions.js');
 var http = functions.http;
@@ -293,7 +146,7 @@ var mount = function (mountpoint) {
     });
 };
 
-var source = function (sourcename) {
+var source = function (sourcename, callbacktodo) {
     if (sources[sourcename].isjingle) {
         log('Spawning source(' + sourcename + ')');
     }
@@ -413,8 +266,14 @@ var source = function (sourcename) {
                         }
                     });
                     proc.kill();
-                    if (typeof sources[sourcename].callback === 'function' && docallback) {
-                        sources[sourcename].callback();
+                    if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
+                        var nextcallback = callbacktodo.shift();
+                        source(nextcallback, callbacktodo);
+                        sourcecb(callbacktodo);
+                    } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
+                        callbacktodo = sources[sourcename].callback.slice(0);
+                        var nextcallback = callbacktodo.shift();
+                        source(nextcallback, callbacktodo);
                     } else {
                         setTimeout(function () {
                             source(sourcename);
@@ -435,14 +294,24 @@ var source = function (sourcename) {
                 log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
             }
         });
-        if (typeof sources[sourcename].callback === 'function' && docallback) {
-            sources[sourcename].callback();
+        if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
+            var nextcallback = callbacktodo.shift();
+            source(nextcallback, callbacktodo);
+            sourcecb(callbacktodo);
+        } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
+            callbacktodo = sources[sourcename].callback.slice(0);
+            var nextcallback = callbacktodo.shift();
+            source(nextcallback, callbacktodo);
         } else {
             setTimeout(function () {
                 source(sourcename);
             }, (typeof sources[sourcename].retrywait === 'number' ? sources[sourcename].retrywait : 0));
         }
     });
+};
+
+var sourcecb = function (callback) {
+    var thiscallback = callback.shift();
 };
 
 var server = http.createServer(function (req, res) {
@@ -603,35 +472,57 @@ var server = http.createServer(function (req, res) {
     }
 });
 
-Object.keys(mounts).forEach(function (mountpoint) {
-    log('Spawning mount(' + mountpoint + ')');
-    if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
-        if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
-            mounts[mountpoint].converterpath = config.global.converterpath;
-        } else {
-            mounts[mountpoint].converterpath = '/usr/bin/ffmpeg';
-        }
+var parseandsetconfig = function (input, callback) {
+    input = JSON.parse(input);
+    config = input.config;
+    mounts = input.mounts;
+    sources = input.sources;
+    if (typeof callback === 'function') {
+        callback();
     }
-    mount(mountpoint);
-});
+};
 
-Object.keys(sources).forEach(function (sourcekey) {
-    Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
-        if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
-            sources[sourcekey].destinations[destinationkey].priority = 0;
+var init = function () {
+    Object.keys(mounts).forEach(function (mountpoint) {
+        log('Spawning mount(' + mountpoint + ')');
+        if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
+            if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
+                mounts[mountpoint].converterpath = config.global.converterpath;
+            } else {
+                mounts[mountpoint].converterpath = '/usr/bin/ffmpeg';
+            }
+        }
+        mount(mountpoint);
+    });
+    
+    Object.keys(sources).forEach(function (sourcekey) {
+        Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
+            if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
+                sources[sourcekey].destinations[destinationkey].priority = 0;
+            }
+        });
+        if (typeof sources[sourcekey].converterpath !== 'string' || sources[sourcekey].converterpath.trim() === '') {
+            if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
+                sources[sourcekey].converterpath = config.global.converterpath;
+            } else {
+                sources[sourcekey].converterpath = '/usr/bin/ffmpeg';
+            }
+        }
+        if (!sources[sourcekey].isjingle) {
+            log('Spawning source(' + sourcekey + ')');
+            source(sourcekey);
         }
     });
-    if (typeof sources[sourcekey].converterpath !== 'string' || sources[sourcekey].converterpath.trim() === '') {
-        if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
-            sources[sourcekey].converterpath = config.global.converterpath;
-        } else {
-            sources[sourcekey].converterpath = '/usr/bin/ffmpeg';
-        }
-    }
-    if (!sources[sourcekey].isjingle) {
-        log('Spawning source(' + sourcekey + ')');
-        source(sourcekey);
-    }
-});
+    
+    server.listen(config.server.port, config.server.ip);
+};
 
-server.listen(config.server.port, config.server.ip);
+var stdin = '';
+process.stdin.on('data', function (chunk) {
+    stdin += chunk;
+});
+process.stdin.on('close', function () {
+    parseandsetconfig(stdin, function () {
+        init();
+    });
+});
