@@ -129,7 +129,7 @@ var shoutcastincoming = net.createServer(function (c) {
 
 var icecastincoming = net.createServer(function (c) {
     c.setTimeout(5000, function () {
-        //c.destroy();
+        c.destroy();
     });
     var authdata = '';
     var authlistener = function (chunk) {
@@ -153,6 +153,12 @@ var icecastincoming = net.createServer(function (c) {
                     incoming(allowness, c, 'icecast');
                 });
             } else {
+                c.write('Hacking attempt!\n');
+                c.destroy();
+            }
+        } else {
+            if (authdata.length > 1048576) {
+                c.write('Hacking attempt!\n');
                 c.destroy();
             }
         }
