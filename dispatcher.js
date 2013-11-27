@@ -262,7 +262,6 @@ var server = http.createServer(function (req, res) {
                 '</html>');
     }
 });
-server.listen(config.port, config.ip);
 
 var clienting = function (mountpoint) {
     log('Spawned clienting(' + mountpoint + ')');
@@ -353,6 +352,8 @@ var init = function () {
     Object.keys(mounts).forEach(function (mountpoint) {
         clienting(mountpoint);
     });
+    
+    server.listen(config.port, config.ip);
     
     setInterval(function () {
         Object.keys(mounts).forEach(function (mountpoint) {
