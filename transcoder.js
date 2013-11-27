@@ -242,7 +242,7 @@ var source = function (sourcename, callbacktodo) {
                 if (mounts[destinationkey]) {
                     if (!mounts[destinationkey]._.source || sources[mounts[destinationkey]._.source].destinations[destinationkey].priority < sources[sourcename].destinations[destinationkey].priority) {
                         if (mounts[destinationkey]._.source) {
-                            log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source.sourcename + ' to ' + sourcename);
+                            log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source + ' to ' + sourcename);
                         } else {
                             log('Switched ' + destinationkey + ' from none to ' + sourcename);
                         }
