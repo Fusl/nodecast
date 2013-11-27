@@ -121,7 +121,7 @@
                 "dj"
             ],
             "unsyncdiscard": true,
-            "timeout": 1000,
+            "timeout": 2500,
             "destinations": {
                 "/main-192.mp3": {
                     "priority": 10
@@ -141,7 +141,7 @@
             "url": "http://127.0.0.1:6666/handsup",
             "retrywait": 0,
             "unsyncdiscard": true,
-            "timeout": 1000,
+            "timeout": 2500,
             "fadein": 3,
             "destinations": {
                 "/main-192.mp3": {
