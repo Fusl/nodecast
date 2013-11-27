@@ -177,7 +177,7 @@ var source = function (sourcename, callbacktodo) {
         } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
             options.push('-analyzeduration', config.global.analyzeduration);
         } else {
-            options.push('-analyzeduration', 5000);
+            options.push('-analyzeduration', 0);
         }
         
         if (sources[sourcename].nativerate === true || config.global.nativerate === true) {
@@ -201,6 +201,12 @@ var source = function (sourcename, callbacktodo) {
         }
         
         options.push('-acodec', 'flac');
+        
+        if (typeof sources[sourcename].fadein === 'number' && sources[sourcename].fadein > 0 && parseInt(sources[sourcename].fadein, 0) === sources[sourcename].fadein) {
+            options.push('-af', 'afade=t=in:ss=0:d=' + sources[sourcename].fadein);
+        } else if (typeof config.global.fadein === 'number' && config.global.fadein > 0 && parseInt(config.global.fadein, 0) === config.global.fadein) {
+            options.push('-af', 'afade=t=in:ss=0:d=' + config.global.fadein);
+        }
         
         if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
             options.push('-ar', config.global.convertsamplerate);
