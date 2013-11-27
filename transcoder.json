@@ -142,6 +142,7 @@
             "retrywait": 0,
             "unsyncdiscard": true,
             "timeout": 1000,
+            "fadein": 3,
             "destinations": {
                 "/main-192.mp3": {
                     "priority": 9
@@ -177,6 +178,36 @@
                     "priority": 9
                 }
             }
+        },
+        "silence": {
+            "url": "-",
+            "destinations": {
+                "/main-192.mp3": {
+                    "priority": 0
+                },
+                "/main-128.mp3": {
+                    "priority": 0
+                },
+                "/main-128.aac": {
+                    "priority": 0
+                },
+                "/main-64.aac": {
+                    "priority": 0
+                }
+            },
+            "options": [
+                "-analyzeduration", 0,  
+                "-re",
+                "-f", "lavfi",
+                "-i", "aevalsrc=0",
+                "-ac", 2,
+                "-acodec", "flac",
+                "-ar", 48000,
+                "-f", "flac",
+                "-sample_fmt", "s16",
+                "-sn", "-vn",
+                "pipe:1"
+            ]
         }
     }
 }
