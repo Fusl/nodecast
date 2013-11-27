@@ -196,6 +196,7 @@
                 }
             },
             "options": [
+                "-loglevel", "quiet",
                 "-analyzeduration", 0,  
                 "-re",
                 "-f", "lavfi",
