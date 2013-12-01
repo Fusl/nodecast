@@ -28,5 +28,5 @@
     "dependencies": {
         "lame": "*"
     },
-    "license": "MIT"
+    "license": "GPLv3"
 }
