@@ -30,38 +30,31 @@ var mountstreamsout = {};
 var mount = function (mountpoint) {
     var options = [],
         proc = false;
+    
     log('Spawning mount(' + mountpoint + ')');
+    
     mounts[mountpoint]._ = {};
     mounts[mountpoint]._.clients = {};
     mounts[mountpoint]._.source = false;
     
     if (!mountstreamsin[mountpoint]) {
         mountstreamsin[mountpoint] = new Streampass();
-        mountstreamsin[mountpoint].setMaxListeners(0);
     }
-    if (!mountstreamsin[mountpoint].readable || !mountstreamsin[mountpoint].writable) {
-        mountstreamsin[mountpoint].destroy();
-        mountstreamsin[mountpoint] = new Streampass();
-        mountstreamsin[mountpoint].setMaxListeners(0);
-    }
+    
     if (!mountstreamsout[mountpoint]) {
         mountstreamsout[mountpoint] = new Streampass();
         mountstreamsout[mountpoint].setMaxListeners(0);
-    }
-    if (!mountstreamsout[mountpoint].readable || !mountstreamsout[mountpoint].writable) {
-        mountstreamsout[mountpoint].destroy();
-        mountstreamsout[mountpoint] = new Streampass();
-        mountstreamsout[mountpoint].setMaxListeners(0);
-    }
-    
-    if (mounts[mountpoint].debug !== true && config.global.debug !== true) {
-        options.push('-loglevel', 'quiet');
     }
     
     if (typeof mounts[mountpoint].options === 'object' && mounts[mountpoint].options instanceof Array) {
         options = mounts[mountpoint].options;
     } else {
-        options.push('-acodec', 'flac');
+        if (mounts[mountpoint].debug !== true && config.global.debug !== true) {
+            options.push('-loglevel', 'quiet');
+        }
+        
+        options.push('-ac', 2);
+        options.push('-acodec', 'pcm_u8');
         
         if (typeof mounts[mountpoint].analyzeduration === 'number' && mounts[mountpoint].analyzeduration >= 0 && parseInt(mounts[mountpoint].analyzeduration, 0) === mounts[mountpoint].analyzeduration) {
             options.push('-analyzeduration', mounts[mountpoint].analyzeduration);
@@ -71,10 +64,14 @@ var mount = function (mountpoint) {
             options.push('-analyzeduration', 5000);
         }
         
-        options.push('-f', 'flac');
+        if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
+            options.push('-ar', config.global.convertsamplerate);
+        } else {
+            options.push('-ar', 48000);
+        }
         
+        options.push('-f', 'u8');
         options.push('-re');
-        
         options.push('-i', 'pipe:0');
         
         if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
@@ -118,9 +115,7 @@ var mount = function (mountpoint) {
         }
         
         options.push('-flags2', 'local_header');
-        
         options.push('-strict', '-2');
-        
         options.push('pipe:1');
         
         mounts[mountpoint].options = options;
@@ -128,9 +123,10 @@ var mount = function (mountpoint) {
     
     proc = child_process.spawn(mounts[mountpoint].converterpath, options);
     
-    proc.once('error', function (e) {
-        log(e);
-    });
+    proc.once('error', function (e) {});
+    proc.stdin.once('error', function (e) {});
+    proc.stdout.once('error', function (e) {});
+    proc.stderr.once('error', function (e) {});
     
     if (mounts[mountpoint].debug === true || config.global.debug === true) {
         proc.stderr.on('data', function (chunk) {
@@ -157,11 +153,14 @@ var source = function (sourcename, callbacktodo) {
     if (sources[sourcename].isjingle) {
         log('Spawning source(' + sourcename + ')');
     }
+    
     var suicide = false,
         options = [],
         proc = false,
         timeout = false,
-        docallback = false;
+        docallback = false,
+        nextcallback = false;
+    
     sources[sourcename]._ = {};
     sources[sourcename]._.id = sourcename + '_' + uniqid('', true);
     
@@ -200,7 +199,7 @@ var source = function (sourcename, callbacktodo) {
             options.push('-ac', 2);
         }
         
-        options.push('-acodec', 'flac');
+        options.push('-acodec', 'pcm_u8');
         
         if (typeof sources[sourcename].fadein === 'number' && sources[sourcename].fadein > 0 && parseInt(sources[sourcename].fadein, 0) === sources[sourcename].fadein) {
             options.push('-af', 'afade=t=in:ss=0:d=' + sources[sourcename].fadein);
@@ -214,18 +213,18 @@ var source = function (sourcename, callbacktodo) {
             options.push('-ar', 48000);
         }
         
-        options.push('-f', 'flac');
-        
-        options.push('-sample_fmt', 's16');
-        
+        options.push('-f', 'u8');
         options.push('-sn', '-vn');
-        
         options.push('pipe:1');
-        
         sources[sourcename].options = options;
     }
     
     proc = child_process.spawn(sources[sourcename].converterpath, options);
+    
+    proc.once('error', function (e) {});
+    proc.stdin.once('error', function (e) {});
+    proc.stdout.once('error', function (e) {});
+    proc.stderr.once('error', function (e) {});
     
     if (sources[sourcename].debug === true || config.global.debug === true) {
         proc.stderr.on('data', function (chunk) {
@@ -237,69 +236,66 @@ var source = function (sourcename, callbacktodo) {
         timeout = {};
     }
     
-    proc.stdout.once('data', function (chunk) {
-        var firstchunk = chunk;
-        docallback = true;
-        proc.stdout.on('data', function (chunk) {
-            if (suicide === true) {
-                return;
-            }
-            Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
-                if (mounts[destinationkey]) {
-                    if (!mounts[destinationkey]._.source || sources[mounts[destinationkey]._.source].destinations[destinationkey].priority < sources[sourcename].destinations[destinationkey].priority) {
-                        if (mounts[destinationkey]._.source) {
-                            log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source + ' to ' + sourcename);
-                        } else {
-                            log('Switched ' + destinationkey + ' from none to ' + sourcename);
-                        }
-                        mounts[destinationkey]._.source = sourcename;
-                    }
-                    if (mounts[destinationkey]._.source === sourcename) {
-                        if (firstchunk) {
-                            mountstreamsin[destinationkey].write(firstchunk);
-                        }
-                        mountstreamsin[destinationkey].write(chunk);
-                    }
+    proc.stdout.on('data', function (chunk) {
+        if (suicide === true) {
+            return;
+        }
+        
+        Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
+            if (!mounts[destinationkey]._.source || sources[mounts[destinationkey]._.source].destinations[destinationkey].priority < sources[sourcename].destinations[destinationkey].priority) {
+                if (mounts[destinationkey]._.source) {
+                    log('Switched ' + destinationkey + ' from ' + mounts[destinationkey]._.source + ' to ' + sourcename);
+                } else {
+                    log('Switched ' + destinationkey + ' from none to ' + sourcename);
                 }
-            });
-            if (firstchunk) {
-                firstchunk = false;
+                
+                mounts[destinationkey]._.source = sourcename;
             }
-            if (timeout) {
-                clearTimeout(timeout);
-                timeout = setTimeout(function () {
-                    if (suicide === true) {
-                        return;
-                    }
-                    suicide = true;
-                    Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
-                        if (mounts[destinationkey]._.source === sourcename) {
-                            mounts[destinationkey]._.source = false;
-                            log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
-                        }
-                    });
-                    proc.kill();
-                    if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
-                        var nextcallback = callbacktodo.shift();
-                        source(nextcallback, callbacktodo);
-                    } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
-                        callbacktodo = sources[sourcename].callback.slice(0);
-                        var nextcallback = callbacktodo.shift();
-                        source(nextcallback, callbacktodo);
-                    } else {
-                        setTimeout(function () {
-                            source(sourcename);
-                        }, (typeof sources[sourcename].retrywait === 'number' ? sources[sourcename].retrywait : 0));
-                    }
-                }, sources[sourcename].timeout);
+            if (mounts[destinationkey]._.source === sourcename) {
+                mountstreamsin[destinationkey].write(chunk);
             }
         });
+        
+        if (timeout) {
+            clearTimeout(timeout);
+            
+            timeout = setTimeout(function () {
+                if (suicide === true) {
+                    return;
+                }
+                suicide = true;
+                
+                Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
+                    if (mounts[destinationkey]._.source === sourcename) {
+                        mounts[destinationkey]._.source = false;
+                        log('Switched ' + destinationkey + ' from ' + sourcename + ' to none');
+                    }
+                });
+                
+                proc.kill();
+                
+                if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
+                    nextcallback = callbacktodo.shift();
+                    source(nextcallback, callbacktodo);
+                } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
+                    callbacktodo = sources[sourcename].callback.slice(0);
+                    nextcallback = callbacktodo.shift();
+                    source(nextcallback, callbacktodo);
+                } else {
+                    setTimeout(function () {
+                        source(sourcename);
+                    }, (typeof sources[sourcename].retrywait === 'number' ? sources[sourcename].retrywait : 0));
+                }
+            }, sources[sourcename].timeout);
+        }
     });
+
     proc.once('close', function () {
         if (suicide === true) {
             return;
         }
         suicide = true;
+        
         Object.keys(sources[sourcename].destinations).forEach(function (destinationkey) {
             if (mounts[destinationkey]._.source === sourcename) {
                 mounts[destinationkey]._.source = false;
@@ -307,11 +303,11 @@ var source = function (sourcename, callbacktodo) {
             }
         });
         if (typeof callbacktodo === 'object' && callbacktodo instanceof Array && callbacktodo.length > 0) {
-            var nextcallback = callbacktodo.shift();
+            nextcallback = callbacktodo.shift();
             source(nextcallback, callbacktodo);
         } else if (typeof sources[sourcename].callback === 'object' && sources[sourcename].callback instanceof Array && sources[sourcename].callback.length > 0 && docallback) {
             callbacktodo = sources[sourcename].callback.slice(0);
-            var nextcallback = callbacktodo.shift();
+            nextcallback = callbacktodo.shift();
             source(nextcallback, callbacktodo);
         } else {
             setTimeout(function () {
@@ -490,6 +486,10 @@ var parseandsetconfig = function (input, callback) {
 };
 
 var init = function () {
+    if (typeof mounts !== 'object' || typeof sources !== 'object' || typeof config !== 'object' || typeof config.server !== 'object' || typeof config.server.port !== 'number') {
+        console.error("No mounts/sources/config/config.server/config.server.port found in configuration");
+        process.exit(1);
+    }
     Object.keys(mounts).forEach(function (mountpoint) {
         log('Spawning mount(' + mountpoint + ')');
         if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
@@ -506,6 +506,9 @@ var init = function () {
         Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
             if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
                 sources[sourcekey].destinations[destinationkey].priority = 0;
+            }
+            if (typeof mounts[destinationkey] !== 'object') {
+                delete sources[sourcekey].destinations[destinationkey];
             }
         });
         if (typeof sources[sourcekey].converterpath !== 'string' || sources[sourcekey].converterpath.trim() === '') {
