@@ -132,6 +132,8 @@ var mount = function (mountpoint) {
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
+    } else {
+        proc.stderr.resumt(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
     }
     
     proc.stdout.on('data', function (chunk) {
@@ -230,6 +232,8 @@ var source = function (sourcename, callbacktodo) {
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
+    } else {
+        proc.stderr.resumt(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
     }
     
     if (typeof sources[sourcename].timeout === 'number' && sources[sourcename].timeout > 0 && parseInt(sources[sourcename].timeout, 0) === sources[sourcename].timeout) {
