@@ -29,7 +29,7 @@ if(!isset($users[$username]) || empty($users[$username]) || $users[$username]["p
 }
 
 if(!in_array($_GET["method"], $users[$username]["methods"]) && !in_array('*', $users[$username]["methods"])) {
-    die("0"); // If this user is not allowed to call the server with the called methot, exit with allowness 0
+    die("0"); // If this user is not allowed to call the server with the called method, exit with allowness 0
 }
 
 if(isset($users[$username]["cond"]) && !isset($users[$username]["cond"])) {
