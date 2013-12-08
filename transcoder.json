@@ -42,6 +42,48 @@
         }
     },
     "mounts": {
+        "/main-vi.ts": {
+            "name": "RaveOne.FM Mainstream Visualized",
+            "url": "http://raveone.fm/",
+            "genre": "RaveOne.FM Mainstream Visualized",
+            "metaint": 32768,
+            "contenttype": "video/mp2t",
+            "notices": [
+                "This is",
+                "a",
+                "video",
+                "teststream"
+            ],
+            "allowedips": [
+                "127.0.0.1",
+                "10.135.0.2",
+                "10.135.192.26"
+            ],
+            "debug": true,
+            "options": [
+                "-acodec", "pcm_u8",
+                "-analyzeduration", 5000,
+                "-ar", 48000,
+                "-f", "u8",
+                "-re",
+                "-i", "pipe:0",
+                "-ab", "128k",
+                "-ac", 2,
+                "-acodec", "libmp3lame",
+                "-ar", 44100,
+                "-b:v", "100k",
+                "-filter_complex", "asplit=3[out1][a][b]; [a]showwaves=s=640x240,pad=iw:ih*2[waves]; [b]showspectrum=mode=separate:color=intensity:slide=1:scale=cbrt:s=640x240[spectrum]; [waves][spectrum] overlay=0:h [out0]",
+                "-map", "[out0]",
+                "-map", "[out1]",
+                "-preset", "ultrafast",
+                "-r", 24,
+                "-s", "hd720",
+                "-threads", "auto",
+                "-f", "mpegts",
+                "-flags2", "+local_header",
+                "pipe:1"
+            ]
+        },
         "/main-192.mp3": {
             "name": "RaveOne.FM Mainstream 192k",
             "url": "http://raveone.fm/",
@@ -123,6 +165,9 @@
             "unsyncdiscard": true,
             "timeout": 2500,
             "destinations": {
+                "/main-vi.ts": {
+                    "priority": 10
+                },
                 "/main-192.mp3": {
                     "priority": 10
                 },
@@ -144,6 +189,9 @@
             "timeout": 2500,
             "fadein": 3,
             "destinations": {
+                "/main-vi.ts": {
+                    "priority": 9
+                },
                 "/main-192.mp3": {
                     "priority": 9
                 },
@@ -165,6 +213,9 @@
             "nativerate": true,
             "atHours": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
             "destinations": {
+                "/main-vi.ts": {
+                    "priority": 9
+                },
                 "/main-192.mp3": {
                     "priority": 9
                 },
@@ -182,6 +233,9 @@
         "silence": {
             "url": "-",
             "destinations": {
+                "/main-vi.ts": {
+                    "priority": 0
+                },
                 "/main-192.mp3": {
                     "priority": 0
                 },
@@ -200,12 +254,11 @@
                 "-analyzeduration", 0,  
                 "-re",
                 "-f", "lavfi",
-                "-i", "aevalsrc=0",
+                "-i", "aevalsrc='-2+random(0)'",
                 "-ac", 2,
-                "-acodec", "flac",
+                "-acodec", "pcm_u8",
                 "-ar", 48000,
-                "-f", "flac",
-                "-sample_fmt", "s16",
+                "-f", "u8",
                 "-sn", "-vn",
                 "pipe:1"
             ]

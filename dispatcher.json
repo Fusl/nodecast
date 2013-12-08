@@ -42,6 +42,11 @@
         }
     },
     "mounts": {
+        "/main-vi.ts": {
+            "url": "http://localhost:7777/main-vi.ts",
+            "metaurl": "http://localhost/meta.php?stream=main-vi",
+            "maxclients": 10
+        },
         "/main-192.mp3": {
             "url": "http://localhost:7777/main-192.mp3",
             "metaurl": "http://localhost/meta.php?stream=main-192",
