@@ -56,15 +56,15 @@ var mount = function (mountpoint) {
         options.push('-ac', 2);
         options.push('-acodec', 'pcm_u8');
         
-        if (typeof mounts[mountpoint].analyzeduration === 'number' && mounts[mountpoint].analyzeduration >= 0 && parseInt(mounts[mountpoint].analyzeduration, 0) === mounts[mountpoint].analyzeduration) {
+        if (Number(mounts[mountpoint].analyzeduration) >= 0) {
             options.push('-analyzeduration', mounts[mountpoint].analyzeduration);
-        } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
+        } else if (Number(config.global.analyzeduration) >= 0) {
             options.push('-analyzeduration', config.global.analyzeduration);
         } else {
             options.push('-analyzeduration', 5000);
         }
         
-        if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
+        if (Number(config.global.convertsamplerate) > 0) {
             options.push('-ar', config.global.convertsamplerate);
         } else {
             options.push('-ar', 48000);
@@ -74,17 +74,17 @@ var mount = function (mountpoint) {
         options.push('-re');
         options.push('-i', 'pipe:0');
         
-        if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
+        if (Number(mounts[mountpoint].bitrate) > 0) {
             options.push('-ab', mounts[mountpoint].bitrate + 'k');
-        } else if (typeof config.global.bitrate === 'number' && config.global.bitrate > 0 && parseInt(config.global.bitrate, 0) === config.global.bitrate) {
+        } else if (Number(config.global.bitrate) > 0) {
             options.push('-ab', config.global.bitrate);
         } else {
             options.push('-ab', '128k');
         }
         
-        if (typeof mounts[mountpoint].channels === 'number' && mounts[mountpoint].channels > 0 && parseInt(mounts[mountpoint].channels, 0) === mounts[mountpoint].channels) {
+        if (Number(mounts[mountpoint].channels) > 0) {
             options.push('-ac', mounts[mountpoint].channels);
-        } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
+        } else if (Number(config.global.channels) > 0) {
             options.push('-ac', config.global.channels);
         } else {
             options.push('-ac', 2);
@@ -98,9 +98,9 @@ var mount = function (mountpoint) {
             options.push('-acodec', 'libmp3lame');
         }
         
-        if (typeof mounts[mountpoint].samplerate === 'number' && mounts[mountpoint].samplerate > 0 && parseInt(mounts[mountpoint].samplerate, 0) === mounts[mountpoint].samplerate) {
+        if (Number(mounts[mountpoint].samplerate) > 0) {
             options.push('-ar', mounts[mountpoint].samplerate);
-        } else if (typeof config.global.samplerate === 'number' && config.global.samplerate > 0 && parseInt(config.global.samplerate, 0) === config.global.samplerate) {
+        } else if (Number(config.global.samplerate) > 0) {
             options.push('-ar', config.global.samplerate);
         } else {
             options.push('-ar', 48000);
@@ -173,9 +173,9 @@ var source = function (sourcename, callbacktodo) {
             options.push('-loglevel', 'quiet');
         }
         
-        if (typeof sources[sourcename].analyzeduration === 'number' && sources[sourcename].analyzeduration >= 0 && parseInt(sources[sourcename].analyzeduration, 0) === sources[sourcename].analyzeduration) {
+        if (Number(sources[sourcename].analyzeduration) >= 0) {
             options.push('-analyzeduration', mounts[sourcename].analyzeduration);
-        } else if (typeof config.global.analyzeduration === 'number' && config.global.analyzeduration >= 0 && parseInt(config.global.analyzeduration, 0) === config.global.analyzeduration) {
+        } else if (Number(config.global.analyzeduration) >= 0) {
             options.push('-analyzeduration', config.global.analyzeduration);
         } else {
             options.push('-analyzeduration', 0);
@@ -193,9 +193,9 @@ var source = function (sourcename, callbacktodo) {
             options.push('-i', 'http://mp3.tb-stream.net/');
         }
         
-        if (typeof sources[sourcename].channels === 'number' && sources[sourcename].channels > 0 && parseInt(sources[sourcename].channels, 0) === sources[sourcename].channels) {
+        if (Number(sources[sourcename].channels) > 0) {
             options.push('-ac', sources[sourcename]);
-        } else if (typeof config.global.channels === 'number' && config.global.channels > 0 && parseInt(config.global.channels, 0) === config.global.channels) {
+        } else if (Number(config.global.channels) > 0) {
             options.push('-ac', config.global.channels);
         } else {
             options.push('-ac', 2);
@@ -203,13 +203,13 @@ var source = function (sourcename, callbacktodo) {
         
         options.push('-acodec', 'pcm_u8');
         
-        if (typeof sources[sourcename].fadein === 'number' && sources[sourcename].fadein > 0 && parseInt(sources[sourcename].fadein, 0) === sources[sourcename].fadein) {
+        if (Number(sources[sourcename].fadein) > 0) {
             options.push('-af', 'afade=t=in:ss=0:d=' + sources[sourcename].fadein);
-        } else if (typeof config.global.fadein === 'number' && config.global.fadein > 0 && parseInt(config.global.fadein, 0) === config.global.fadein) {
+        } else if (Number(config.global.fadein) > 0) {
             options.push('-af', 'afade=t=in:ss=0:d=' + config.global.fadein);
         }
         
-        if (typeof config.global.convertsamplerate === 'number' && config.global.convertsamplerate > 0 && parseInt(config.global.convertsamplerate, 0) === config.global.convertsamplerate) {
+        if (Number(config.global.convertsamplerate) > 0) {
             options.push('-ar', config.global.convertsamplerate);
         } else {
             options.push('-ar', 48000);
@@ -236,7 +236,7 @@ var source = function (sourcename, callbacktodo) {
         proc.stderr.resumt(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
     }
     
-    if (typeof sources[sourcename].timeout === 'number' && sources[sourcename].timeout > 0 && parseInt(sources[sourcename].timeout, 0) === sources[sourcename].timeout) {
+    if (Number(sources[sourcename].timeout) > 0) {
         timeout = {};
     }
     
@@ -419,9 +419,9 @@ var server = http.createServer(function (req, res) {
             headers['content-type'] = config.global.contenttype;
         }
         
-        if (typeof mounts[mountpoint].bitrate === 'number' && mounts[mountpoint].bitrate > 0 && parseInt(mounts[mountpoint].bitrate, 0) === mounts[mountpoint].bitrate) {
+        if (Number(mounts[mountpoint].bitrate) > 0) {
             headers['icy-br'] = mounts[mountpoint].bitrate;
-        } else if (typeof config.global.bitrate === 'number' && config.global.bitrate > 0 && parseInt(config.global.bitrate, 0) === config.global.bitrate) {
+        } else if (Number(config.global.bitrate) > 0) {
             headers['icy-br'] = config.global.bitrate;
         } else {
             headers['icy-br'] = 128;
@@ -433,9 +433,9 @@ var server = http.createServer(function (req, res) {
             headers['icy-genre'] = config.global.genre;
         }
         
-        if (typeof mounts[mountpoint].metaint === 'number' && mounts[mountpoint].metaint > 0 && parseInt(mounts[mountpoint].metaint, 0) === mounts[mountpoint].metaint) {
+        if (Number(mounts[mountpoint].metaint) > 0) {
             headers['icy-metaint'] = mounts[mountpoint].metaint;
-        } else if (typeof config.global.metaint === 'number' && config.global.metaint > 0 && parseInt(config.global.metaint, 0) === config.global.metaint) {
+        } else if (Number(config.global.metaint) > 0) {
             headers['icy-br'] = config.global.metaint;
         }
         
