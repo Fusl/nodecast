@@ -180,7 +180,7 @@ var stdin = '';
 process.stdin.on('data', function (chunk) {
     stdin += chunk;
 });
-process.stdin.on('close', function () {
+process.stdin.once('close', function () {
     parseandsetconfig(stdin, function () {
         Object.keys(playlists).forEach(function (playlistkey) {
             Object.keys(playlists[playlistkey].calendarmaps).forEach(function (calendarmapkey) {
