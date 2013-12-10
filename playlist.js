@@ -2,7 +2,6 @@
 
 "use strict";
 /*jslint maxlen: 1000 */
-/*jslint plusplus: true */
 /*jslint nomen: true*/
 
 // Configuration (Modify these to your needs)
