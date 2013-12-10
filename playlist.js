@@ -136,12 +136,7 @@ var server = http.createServer(function (req, res) {
                 '-analyzeduration', '5000',
                 '-re',
                 '-i', file,
-                '-ac', 2,
-                '-acodec', 'flac',
-                '-ar', 48000,
-                '-f', 'flac',
-                '-preset', 'ultrafast',
-                '-sample_fmt', 's16',
+                '-acodec', 'copy',
                 '-sn', '-vn',
                 'pipe:1'
             ]);
