@@ -407,7 +407,13 @@ var server = http.createServer(function (req, res) {
             mountpoint = req.url,
             connecttime = new Date(),
             headers = {},
-            noticenum = 0;
+            noticenum = 0,
+            streamdatacallback = false;
+        streamdatacallback = function (chunk) {
+            if (res.writable === true && !res.socket._writableState.length) {
+                res.write(chunk);
+            }
+        };
         log(clientid + ' connected to mountpoint ' + req.url);
         res.sendDate = false;
         
@@ -465,11 +471,6 @@ var server = http.createServer(function (req, res) {
         
         res.writeHead(200, headers);
         mounts[req.url]._.clients[clientid] = {'req': req, 'res': res};
-        var streamdatacallback = function (chunk) {
-            if (res.writable === true && !res.socket._writableState.length) {
-                res.write(chunk);
-            }
-        };
         mountstreamsout[mountpoint].on('data', streamdatacallback);
         res.once('close', function () {
             mountstreamsout[mountpoint].removeListener('data', streamdatacallback);
