@@ -1,15 +1,21 @@
 {
     "name": "nodecast",
-    "preferGlobal": false,
-    "version": "0.1.4",
+    "preferGlobal": true,
+    "version": "0.1.5",
     "author": "Fusl <root@hallowe.lt>",
     "description": "nodecast is a high performance shoutcast-/icecast-like server, playlist, stream transcoder and dispatcher",
-    "contrubitors": [
+    "contributors": [
         {
             "name": "Fusl",
             "email": "root@hallowe.lt"
         }
     ],
+	"bin": {
+		"nc-server": "./server.js",
+		"nc-playlist": "./playlist.js",
+		"nc-transcoder": "./transcoder.js",
+		"nc-dispatcher": "./dispatcher.js"
+	},
     "repository": {
         "type": "git",
         "url": "https://github.com/Fusl/nodecast.git"
@@ -25,8 +31,5 @@
         "webradio",
         "radio"
     ],
-    "dependencies": {
-        "lame": "*"
-    },
     "license": "GPLv3"
 }
