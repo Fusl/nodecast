@@ -112,8 +112,8 @@ var server = http.createServer(function (req, res) {
             listener += Object.keys(mounts[mountpoint]._.clients).length;
             bytesrcvd += mounts[mountpoint]._.bytesrcvd;
             bytessent += mounts[mountpoint]._.bytessent;
-            Object.keys(mounts[mountpoint]._.prebuffers).forEach(function (prebufferkey) {
-                prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
+            mounts[mountpoint]._.prebuffers.forEach(function (prebuffer) {
+                prebuffersize += prebuffer.length;
             });
         });
         res.write('Uptime: ' + uptime + '\n' +
@@ -125,8 +125,8 @@ var server = http.createServer(function (req, res) {
                   'Prebuffer size: ' + prebuffersize + '\n');
         Object.keys(mounts).forEach(function (mountpoint) {
             res.write('Mount ' + mountpoint + '\n');
-            Object.keys(mounts[mountpoint]._.prebuffers).forEach(function (prebufferkey) {
-                prebuffersize += mounts[mountpoint]._.prebuffers[prebufferkey].length;
+            mounts[mountpoint]._.prebuffers.forEach(function (prebuffer) {
+                prebuffersize += prebuffer.length;
             });
             res.write(' Prebuffer ' + prebuffersize + ' (' + Object.keys(mounts[mountpoint]._.prebuffers).length + ')\n');
             Object.keys(mounts[mountpoint]._.clients).forEach(function (clientid) {
@@ -210,8 +210,7 @@ var server = http.createServer(function (req, res) {
             res.writeHead(200, clientrealheaders);
             clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
             var resprebuffers = mounts[req.url]._.prebuffers;
-            Object.keys(resprebuffers).forEach(function (resprebufferkey) {
-                var chunk = resprebuffers[resprebufferkey];
+            resprebuffers.forEach(function (chunk) {
                 if (clientstatus.metaint && clientstatus.metaintcycle + chunk.length > clientstatus.metaint) {
                     var remainchunk = new Buffer(chunk.length);
                     chunk.copy(remainchunk);

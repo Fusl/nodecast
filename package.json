@@ -1,5 +1,5 @@
 {
-    "name": "nodecast",
+    "name": "nodecast.io",
     "preferGlobal": true,
     "version": "0.1.5",
     "author": "Fusl <root@hallowe.lt>",
@@ -21,6 +21,8 @@
         "url": "https://github.com/Fusl/nodecast.git"
     },
     "keywords": [
+		"nodecast",
+		"nodecast.io",
         "shoutcast",
         "icecast",
         "stream",

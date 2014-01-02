@@ -139,8 +139,8 @@ var icecastincoming = net.createServer(function (c) {
             authdata = authdata.split(/(\r\n\r\n|\r\r|\n\n)/)[0].split(/(\r\n|\r|\n)/);
             authdata.shift();
             var tmpauthdata = {};
-            Object.keys(authdata).forEach(function (authdatakey) {
-                var authdatapart = authdata[authdatakey].split(':');
+            authdata.forEach(function (authdataparts) {
+                var authdatapart = authdataparts.split(':');
                 if (authdatapart.length > 1) {
                     tmpauthdata[authdatapart.shift().toLowerCase()] = authdatapart.join(':').trimLeft();
                 }

@@ -454,9 +454,9 @@ var server = http.createServer(function (req, res) {
         }
         
         if (mounts[req.url].notices) {
-            Object.keys(mounts[req.url].notices).forEach(function (notice) {
+            mounts[req.url].notices.forEach(function (notice) {
                 noticenum++;
-                headers['icy-notice' + noticenum] = mounts[req.url].notices[notice];
+                headers['icy-notice' + noticenum] = notice;
             });
         }
         headers['icy-pub'] = ((mounts[req.url].ispublic || config.global.ispublic) ? 1 : 0);
