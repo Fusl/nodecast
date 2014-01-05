@@ -53,7 +53,7 @@ var passoutgoing = http.createServer(function (req, res) {
     var authheader = req.headers.authorization;
     if (authheader) {
         var authb64string = authheader.split(' ')[1];
-        if (authb64string) {
+        if (stream && authb64string) {
             var authrawstring = new Buffer(authb64string, 'base64').toString();
             userapi(authrawstring, 'listen', function (success) {
                 if (success !== 1) {

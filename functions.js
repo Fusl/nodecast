@@ -87,6 +87,10 @@ functions.streampass.prototype.write = function (chunk) {
     this.emit('data', chunk);
 };
 
+functions.streampass.prototype.end = function (chunk) {
+    this.emit('end', chunk);
+};
+
 functions.unrefcopy = function (inputObject) {
     if (!(inputObject instanceof Object)) {
         return inputObject;

@@ -15,217 +15,143 @@
         },
         "statuspage": {
             "allowedips": [
-                "127.0.0.1"
+                "127.0.0.1",
+                "81.217.212.85"
             ],
             "readable": {
                 "path": "/status",
                 "allowedips": [
-                    "10.135.192.26"
                 ]
             },
             "parseable": {
                 "path": "/status?json",
                 "allowedips": [
-                    "10.135.0.2"
                 ]
             },
             "inspect": {
                 "path": "/status?json",
-                "allowedips": [
-                    "10.135.0.1"
-                ],
                 "options": {
                     "showHidden": true,
                     "depth": null
-                }
+                },
+                "allowedips": [
+                ]
             }
         }
     },
     "mounts": {
-        "/main-vi.ts": {
-            "name": "RaveOne.FM Mainstream Visualized",
+        "/raveone_192k.mp3": {
+            "name": "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio - 192Kbit/s",
             "url": "http://raveone.fm/",
-            "genre": "RaveOne.FM Mainstream Visualized",
-            "metaint": 32768,
-            "contenttype": "video/mp2t",
-            "notices": [
-                "This is",
-                "a",
-                "video",
-                "teststream"
-            ],
-            "allowedips": [
-                "127.0.0.1",
-                "10.135.0.2",
-                "10.135.192.26"
-            ],
-            "debug": true,
-            "options": [
-                "-acodec", "pcm_u8",
-                "-analyzeduration", 5000,
-                "-ar", 48000,
-                "-f", "u8",
-                "-re",
-                "-i", "pipe:0",
-                "-ab", "128k",
-                "-ac", 2,
-                "-acodec", "libmp3lame",
-                "-ar", 44100,
-                "-b:v", "100k",
-                "-filter_complex", "asplit=3[out1][a][b]; [a]showwaves=s=640x240,pad=iw:ih*2[waves]; [b]showspectrum=mode=separate:color=intensity:slide=1:scale=cbrt:s=640x240[spectrum]; [waves][spectrum] overlay=0:h [out0]",
-                "-map", "[out0]",
-                "-map", "[out1]",
-                "-preset", "ultrafast",
-                "-r", 24,
-                "-s", "hd720",
-                "-threads", "auto",
-                "-f", "mpegts",
-                "-flags2", "+local_header",
-                "pipe:1"
-            ]
-        },
-        "/main-192.mp3": {
-            "name": "RaveOne.FM Mainstream 192k",
-            "url": "http://raveone.fm/",
-            "genre": "RaveOne.FM Mainstream 192k",
+            "genre": "Dance",
             "bitrate": 192,
             "samplerate": 48000,
             "codec": "libmp3lame",
             "format": "mp3",
             "metaint": 8192,
             "contenttype": "audio/mpeg",
+            "unsyncdiscard": true,
             "notices": [
-                "This is",
-                "a",
-                "teststream"
+                "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio"
             ],
             "allowedips": [
-                "127.0.0.1",
-                "10.135.0.2",
-                "10.135.192.26"
+                "127.0.0.1"
             ]
         },
-        "/main-128.mp3": {
-            "name": "RaveOne.FM Mainstream 128k",
+        "/raveone_128k.mp3": {
+            "name": "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio - 128kbit/s",
             "url": "http://raveone.fm/",
-            "genre": "RaveOne.FM Mainstream 128k",
+            "genre": "Dance",
             "bitrate": 128,
             "samplerate": 44100,
             "codec": "libmp3lame",
             "format": "mp3",
             "metaint": 8192,
             "contenttype": "audio/mpeg",
+            "unsyncdiscard": true,
+            "notices": [
+                "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio"
+            ],
             "allowedips": [
-                "127.0.0.1",
-                "10.135.0.2",
-                "10.135.192.26"
+                "127.0.0.1"
             ]
         },
-        "/main-128.aac": {
-            "name": "RaveOne.FM Mainstream AAC",
+        "/raveone_64k.aac": {
+            "name": "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio - 64kbit/s",
             "url": "http://raveone.fm/",
-            "genre": "RaveOne.FM Mainstream AAC",
+            "genre": "Dance",
             "bitrate": 64,
             "samplerate": 44100,
             "codec": "libaacplus",
             "format": "adts",
             "metaint": 8192,
             "contenttype": "audio/x-aac",
+            "unsyncdiscard": true,
+            "notices": [
+                "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio"
+            ],
             "allowedips": [
-                "127.0.0.1",
-                "10.135.0.2",
-                "10.135.192.26"
+                "127.0.0.1"
             ]
         },
-        "/main-64.aac": {
-            "name": "RaveOne.FM Mainstream Low-AAC",
+        "/raveone_32k.aac": {
+            "name": "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio - 32kbit/s",
             "url": "http://raveone.fm/",
-            "genre": "RaveOne.FM Mainstream Low-AAC",
-            "bitrate": 64,
+            "genre": "Dance",
+            "bitrate": 32,
             "samplerate": 44100,
             "codec": "libaacplus",
             "format": "adts",
             "metaint": 8192,
             "contenttype": "audio/x-aac",
+            "unsyncdiscard": true,
+            "notices": [
+                "RaveONE.FM - Internetradio, Onlineradio, Webradio, Techno Radio"
+            ],
             "allowedips": [
-                "127.0.0.1",
-                "10.135.0.2",
-                "10.135.192.26"
+                "127.0.0.1"
             ]
         }
     },
     "sources": {
         "dj": {
-            "url": "http://localhost:8080/",
+            "url": "http://listener:fdsa@localhost:4141/",
+            "debug": true,
             "retrywait": 100,
-            "callback": [
-                "adjingle",
-                "dj"
-            ],
             "unsyncdiscard": true,
-            "timeout": 2500,
+            "timeout": 1000,
             "destinations": {
-                "/main-vi.ts": {
+                "/raveone_192k.mp3": {
                     "priority": 10
                 },
-                "/main-192.mp3": {
+                "/raveone_128k.mp3": {
                     "priority": 10
                 },
-                "/main-128.mp3": {
+                "/raveone_64k.aac": {
                     "priority": 10
                 },
-                "/main-128.aac": {
-                    "priority": 10
-                },
-                "/main-64.aac": {
+                "/raveone_32k.aac": {
                     "priority": 10
                 }
             }
         },
         "playlist": {
-            "url": "http://127.0.0.1:6666/handsup",
+            "url": "http://127.0.0.1:6666/dance",
             "retrywait": 0,
             "unsyncdiscard": true,
             "timeout": 2500,
             "fadein": 3,
             "destinations": {
-                "/main-vi.ts": {
+                "/raveone_192k.mp3": {
                     "priority": 9
                 },
-                "/main-192.mp3": {
+                "/raveone_128k.mp3": {
                     "priority": 9
                 },
-                "/main-128.mp3": {
+                "/raveone_64k.aac": {
                     "priority": 9
                 },
-                "/main-128.aac": {
-                    "priority": 9
-                },
-                "/main-64.aac": {
-                    "priority": 9
-                }
-            }
-        },
-        "adjingle": {
-            "url": "http://10.135.0.2/streamad/streamad.php",
-            "isjingle": true,
-            "listen": "SIGUSR2",
-            "nativerate": true,
-            "atHours": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
-            "destinations": {
-                "/main-vi.ts": {
-                    "priority": 9
-                },
-                "/main-192.mp3": {
-                    "priority": 9
-                },
-                "/main-128.mp3": {
-                    "priority": 9
-                },
-                "/main-128.aac": {
-                    "priority": 9
-                },
-                "/main-64.aac": {
+                "/raveone_32k.aac": {
                     "priority": 9
                 }
             }
@@ -233,19 +159,16 @@
         "silence": {
             "url": "-",
             "destinations": {
-                "/main-vi.ts": {
+                "/raveone_192k.mp3": {
                     "priority": 0
                 },
-                "/main-192.mp3": {
+                "/raveone_128k.mp3": {
                     "priority": 0
                 },
-                "/main-128.mp3": {
+                "/raveone_64k.aac": {
                     "priority": 0
                 },
-                "/main-128.aac": {
-                    "priority": 0
-                },
-                "/main-64.aac": {
+                "/raveone_32k.aac": {
                     "priority": 0
                 }
             },
@@ -254,7 +177,7 @@
                 "-analyzeduration", 0,  
                 "-re",
                 "-f", "lavfi",
-                "-i", "aevalsrc='-2+random(0)'",
+                "-i", "anullsrc",
                 "-ac", 2,
                 "-acodec", "pcm_u8",
                 "-ar", 48000,

@@ -137,6 +137,7 @@ var server = http.createServer(function (req, res) {
                 '-i', file,
                 '-acodec', 'copy',
                 '-sn', '-vn',
+                '-f', 'mp3',
                 'pipe:1'
             ]);
             decoder.stderr.on('data', function (chunk) {

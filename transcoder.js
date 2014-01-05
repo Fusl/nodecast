@@ -9,7 +9,6 @@
    indent: 4, maxlen: 256
 */
 
-// Configuration (Modify these to your needs)
 var config = {};
 var mounts = {};
 var sources = {};
@@ -27,10 +26,7 @@ var Streampass = functions.streampass;
 var mountstreamsin = {};
 var mountstreamsout = {};
 
-var mount = function (mountpoint) {
-    var options = [],
-        proc = false;
-    
+var mount = function (mountpoint) {    
     log('Spawning mount(' + mountpoint + ')');
     
     mounts[mountpoint]._ = {};
@@ -47,8 +43,10 @@ var mount = function (mountpoint) {
     }
     
     if (typeof mounts[mountpoint].options === 'object' && mounts[mountpoint].options instanceof Array) {
-        options = mounts[mountpoint].options;
+        var options = mounts[mountpoint].options;
     } else {
+        var options = [];
+        
         if (mounts[mountpoint].debug !== true && config.global.debug !== true) {
             options.push('-loglevel', 'quiet');
         }
@@ -121,7 +119,7 @@ var mount = function (mountpoint) {
         mounts[mountpoint].options = options;
     }
     
-    proc = child_process.spawn(mounts[mountpoint].converterpath, options);
+    var proc = child_process.spawn(mounts[mountpoint].converterpath, options);
     
     proc.once('error', function (e) {});
     proc.stdin.once('error', function (e) {});
@@ -133,7 +131,7 @@ var mount = function (mountpoint) {
             process.stderr.write(chunk);
         });
     } else {
-        proc.stderr.resumt(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
+        proc.stderr.resume(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
     }
     
     proc.stdout.on('data', function (chunk) {
@@ -157,8 +155,6 @@ var source = function (sourcename, callbacktodo) {
     }
     
     var suicide = false,
-        options = [],
-        proc = false,
         timeout = false,
         docallback = false,
         nextcallback = false;
@@ -167,8 +163,10 @@ var source = function (sourcename, callbacktodo) {
     sources[sourcename]._.id = sourcename + '_' + uniqid('', true);
     
     if (typeof sources[sourcename].options === 'object' && sources[sourcename].options instanceof Array) {
-        options = sources[sourcename].options;
+        var options = sources[sourcename].options;
     } else {
+        var options = [];
+        
         if (sources[sourcename].debug !== true && config.global.debug !== true) {
             options.push('-loglevel', 'quiet');
         }
@@ -221,7 +219,7 @@ var source = function (sourcename, callbacktodo) {
         sources[sourcename].options = options;
     }
     
-    proc = child_process.spawn(sources[sourcename].converterpath, options);
+    var proc = child_process.spawn(sources[sourcename].converterpath, options);
     
     proc.once('error', function (e) {});
     proc.stdin.once('error', function (e) {});
@@ -233,7 +231,7 @@ var source = function (sourcename, callbacktodo) {
             process.stderr.write(chunk);
         });
     } else {
-        proc.stderr.resumt(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
+        proc.stderr.resume(); // This fixes broken ffmpeg builds, which don't accept -loglevel quiet and still output data on stderr
     }
     
     if (Number(sources[sourcename].timeout) > 0) {
@@ -480,6 +478,7 @@ var server = http.createServer(function (req, res) {
     }
 });
 
+// Set all the variables from the config file
 var parseandsetconfig = function (input, callback) {
     input = JSON.parse(input);
     config = input.config;
@@ -490,11 +489,15 @@ var parseandsetconfig = function (input, callback) {
     }
 };
 
+// Initialize function (when all the config variables are being set)
 var init = function () {
+    // If mounts, sources or config.server is not an object or config.server.port is not a number, exit with code 1
     if (typeof mounts !== 'object' || typeof sources !== 'object' || typeof config !== 'object' || typeof config.server !== 'object' || typeof config.server.port !== 'number') {
         console.error("No mounts/sources/config/config.server/config.server.port found in configuration");
         process.exit(1);
     }
+    
+    // Loop through all mountpoints and set the converterpath if not set (correctly)
     Object.keys(mounts).forEach(function (mountpoint) {
         log('Spawning mount(' + mountpoint + ')');
         if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
@@ -507,6 +510,7 @@ var init = function () {
         mount(mountpoint);
     });
     
+    // Loop through all sources, set set the converterpath if not set (correctly) and delete destination assignments if the destination does not exist
     Object.keys(sources).forEach(function (sourcekey) {
         Object.keys(sources[sourcekey].destinations).forEach(function (destinationkey) {
             if (typeof sources[sourcekey].destinations[destinationkey].priority !== 'number') {
@@ -529,9 +533,11 @@ var init = function () {
         }
     });
     
+    // Listen for incoming connections (mountpoints) on port and ip specified in config.server.port and .ip
     server.listen(config.server.port, config.server.ip);
 };
 
+// Read stdin, fill a buffer and submit the buffer to parseandsetconfig when stdin is closed. Callback: Call initialize function
 var stdin = '';
 process.stdin.on('data', function (chunk) {
     stdin += chunk;
