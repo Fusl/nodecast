@@ -217,7 +217,7 @@ var server = http.createServer(function (req, res) {
                     while (clientstatus.metaintcycle + remainchunk.length > clientstatus.metaint) {
                         res.write(remainchunk.slice(0, clientstatus.metaint - clientstatus.metaintcycle));
                         res.write(mounts[req.url]._.meta);
-                        remainchunk = remainchunk.slice(clientstatus.metaint - clientstatus.metaintcycle, chunk.length);
+                        remainchunk = remainchunk.slice(clientstatus.metaint - clientstatus.metaintcycle, remainchunk.length);
                         clientstatus.metaintcycle = 0;
                         clientstatus.sent += mounts[req.url]._.meta.length;
                         mounts[req.url]._.bytessent += mounts[req.url]._.meta.length;
@@ -301,7 +301,7 @@ var clienting = function (mountpoint) {
                         while (mounts[mountpoint]._.clients[clientid].status.metaintcycle + remainchunk.length > mounts[mountpoint]._.clients[clientid].status.metaint) {
                             mounts[mountpoint]._.clients[clientid].res.write(remainchunk.slice(0, mounts[mountpoint]._.clients[clientid].status.metaint - mounts[mountpoint]._.clients[clientid].status.metaintcycle));
                             mounts[mountpoint]._.clients[clientid].res.write(mounts[mountpoint]._.meta);
-                            remainchunk = remainchunk.slice(mounts[mountpoint]._.clients[clientid].status.metaint - mounts[mountpoint]._.clients[clientid].status.metaintcycle, chunk.length);
+                            remainchunk = remainchunk.slice(mounts[mountpoint]._.clients[clientid].status.metaint - mounts[mountpoint]._.clients[clientid].status.metaintcycle, remainchunk.length);
                             mounts[mountpoint]._.clients[clientid].status.metaintcycle = 0;
                             mounts[mountpoint]._.clients[clientid].status.sent += mounts[mountpoint]._.meta.length;
                             mounts[mountpoint]._.bytessent += mounts[mountpoint]._.meta.length;
