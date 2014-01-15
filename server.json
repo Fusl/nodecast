@@ -3,8 +3,10 @@
         "server": {
             "configpath": "/home/fusl/nodecast/server.json",
             "listenip": "0.0.0.0",
-            "listenshoutcastport": 4001,
-            "listenicecastport": 4000,
+            "incomingports": [
+                4000,
+                4001
+            ],
             "listencontrolport": 4002,
             "listenport": 4141,
             "master": true

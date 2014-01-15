@@ -36,7 +36,7 @@ var userapi = function (authstring, method, callback) {
         });
     }).on('error', function (e) {
         console.log(e);
-        callback(1);
+        callback(0);
     });
 };
 
@@ -87,10 +87,13 @@ var incoming = function (allowness, c, sourcetype) {
         if (allowness > 1) {
             source.once('close', function () {
                 source = c;
-                c.on('close', function () {
+                c.once('close', function () {
                     source = false;
                 });
                 c.pipe(stream);
+                c.setTimeout(function () {
+                    c.destroy();
+                });
                 if (sourcetype === 'shoutcast') {
                     c.write('OK\n');
                 }
@@ -102,10 +105,13 @@ var incoming = function (allowness, c, sourcetype) {
     } else {
         if (allowness > 0) {
             source = c;
-            c.on('close', function () {
+            c.once('close', function () {
                 source = false;
             });
             c.pipe(stream);
+            c.setTimeout(function () {
+                c.destroy();
+            });
             if (sourcetype === 'shoutcast') {
                 c.write('OK\n');
             }
@@ -115,54 +121,79 @@ var incoming = function (allowness, c, sourcetype) {
     }
 };
 
-var shoutcastincoming = net.createServer(function (c) {
-    c.setTimeout(5000, function () {
-        c.destroy();
-    });
-    c.once('data', function (chunk) {
-        var auth = trimnl(chunk);
-        userapi(auth, 'shoutcast', function (allowness) {
-            incoming(allowness, c, 'shoutcast');
-        });
-    });
-});
-
-var icecastincoming = net.createServer(function (c) {
-    c.setTimeout(5000, function () {
-        c.destroy();
-    });
+var processincoming= net.createServer(function (c) {
+    var timedout = false;
+    var authtimeout = false;
     var authdata = '';
+    var authlistener = false;
+    var firstlinereceived = false;
+    
     var authlistener = function (chunk) {
         authdata += chunk.toString();
-        if (authdata.split('\r\n\r\n').length > 1) {
+        
+        // Only allow 10 kiB of data for header and kill the connection if the header exceeds this size
+        if (authdata > 10*1024) {
+            c.destroy();
+        }
+        
+        // If the first line does not begin with "SOURCE ..." or "CONTROL ..." (CONTROL is the admin control header for the api), assume it is a normal shoutcast source
+        if (!firstlinereceived && /\r\n|\r|\n/.test(authdata)) {
+            firstlinereceived = true;
+            var firstline = (authdata.split(/\r\n|\r|\n/)[0]);
+            if (firstline.split(' ')[0] !== 'SOURCE' && firstline.split(' ')[0] !== 'CONTROL') {
+                clearTimeout(authtimeout);
+                c.removeListener('data', authlistener);
+                userapi(firstline, 'shoutcast', function (allowness) {
+                    incoming(allowness, c, 'shoutcast');
+                });
+                return;
+            }
+        }
+        
+        if (/\r\n\r\n|\r\r|\n\n/.test(authdata)) {
+            // End of auth header reached
+            
+            // Unlisten for the authdata event
+            clearTimeout(authtimeout);
             c.removeListener('data', authlistener);
-            authdata = authdata.split(/(\r\n\r\n|\r\r|\n\n)/)[0].split(/(\r\n|\r|\n)/);
-            authdata.shift();
-            var tmpauthdata = {};
-            authdata.forEach(function (authdataparts) {
-                var authdatapart = authdataparts.split(':');
-                if (authdatapart.length > 1) {
-                    tmpauthdata[authdatapart.shift().toLowerCase()] = authdatapart.join(':').trimLeft();
-                }
+            
+            // Grab only the header without the double-newline, which is the indicator for the authdata end event
+            authdata = authdata.split(/\r\n\r\n|\r\r|\n\n/)[0];
+            
+            // Make an array ...
+            var authdataArray = authdata.split(/\r\n|\r|\n/);
+            
+            // ... and also an object (separator: ":", key: [0], value: [1]) of the authdata provided by the client
+            var authdataObject = {};
+            authdataArray.forEach(function (authdataArray_line) {
+                authdataArray_line = authdataArray_line.split(':');
+                authdataObject[authdataArray_line.shift().toLowerCase().trim()] = authdataArray_line.join(':').trim();
             });
-            try {
-                authdata = new Buffer(tmpauthdata.authorization.split(' ')[1], 'base64').toString();
-            } catch (e) {}
-            if (authdata) {
-                userapi(authdata, 'icecast', function (allowness) {
+            
+            console.log(authdataObject);
+            
+            // Grab the user:pass pair out of the authdata (either from the authorization header or the first line)
+            var userpass = 'nobody:nopass';
+            
+            if (authdataArray[0].split(' ')[0] === 'SOURCE' || authdataObject.authorization) {
+                userpass = authdataObject.authorization.split(' ');
+                if (userpass[0] === 'Basic') {
+                    userpass = new Buffer(userpass[1], 'base64').toString()
+                }
+                
+                // Pass user:pass pair to userapi which checks if the user is allowed to be a source and then call incoming which decides if the response from userapi is good or bad
+                userapi(userpass, 'icecast', function (allowness) {
                     incoming(allowness, c, 'icecast');
                 });
-            } else {
-                c.write('Hacking attempt!\n');
-                c.destroy();
-            }
-        } else {
-            if (authdata.length > 1048576) {
-                c.write('Hacking attempt!\n');
-                c.destroy();
             }
         }
     };
+    
+    authtimeout = setTimeout(function () {
+        c.removeListener('data', authlistener);
+        c.destroy();
+    }, 5000);
+    
     c.on('data', authlistener);
 });
 
@@ -175,26 +206,21 @@ var parseandsetconfig = function (input, callback) {
 };
 
 var init = function () {
-    icecastincoming.on('listening', function () {
-        console.log('icecastincoming listening on ' + config.server.listenip + ':' + config.server.listenicecastport);
-    });
-    icecastincoming.on('error', function (e) {
+    var dolisten = function () {
+        config.server.incomingports.forEach(function (incomingport) {
+            processincoming.listen(incomingport, config.server.listenip, function () {
+                console.log('processincoming listening on ' + config.server.listenip + ':' + incomingport);
+            });
+        });
+    };
+    processincoming.on('error', function (e) {
         console.log(e);
         setTimeout(function () {
-            icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
+            dolisten();
         }, 1000);
     });
-    icecastincoming.listen(config.server.listenicecastport, config.server.listenip);
-    shoutcastincoming.on('listening', function () {
-        console.log('shoutcastincoming listening on ' + config.server.listenip + ':' + config.server.listenshoutcastport);
-    });
-    shoutcastincoming.on('error', function (e) {
-        console.log(e);
-        setTimeout(function () {
-            shoutcastincoming.listen(config.server.listenshoutcastport, config.server.listenip);
-        }, 1000);
-    });
-    shoutcastincoming.listen(config.server.listenshoutcastport, config.server.listenip);
+    dolisten();
+    
     passoutgoing.on('listening', function () {
         console.log('passoutgoing listening on ' + config.server.listenip + ':' + config.server.listenport);
     });
