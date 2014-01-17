@@ -21,6 +21,7 @@ var icystring = functions.icystring;
 var util = functions.util;
 var log = functions.log;
 var uniqid = functions.uniqid;
+var url = functions.url;
 
 var makemeta = function (metadata) {
     if (typeof metadata === 'string') {
@@ -39,6 +40,7 @@ var makemeta = function (metadata) {
 };
 
 var server = http.createServer(function (req, res) {
+    req.path = url.parse(req.url).pathname;
     if (req.method.toUpperCase() !== 'GET') {
         log(req.socket.remoteAddress + ':' + req.socket.remotePort + ' tried method ' + req.method.toUpperCase());
         res.write('<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">' +
@@ -59,7 +61,7 @@ var server = http.createServer(function (req, res) {
                   '</address>' +
                   '</body>' +
                   '</html>');
-    } else if (req.url === '/crossdomain.xml' && config.servecrossdomainxml) {
+    } else if (req.path === '/crossdomain.xml' && config.servecrossdomainxml) {
         res.writeHead(200, {
             'content-type': 'text/xml',
             'connection': 'close'
@@ -69,7 +71,7 @@ var server = http.createServer(function (req, res) {
                 '<cross-domain-policy>' +
                 '<allow-access-from domain="*" to-ports="*" />' +
                 '</cross-domain-policy>');
-    } else if (req.url === '/listen.pls' && config.servelistenpls) {
+    } else if (req.path === '/listen.pls' && config.servelistenpls) {
         res.writeHead(200, {
             'content-type': 'audio/x-scpls',
             'connection': 'close'
@@ -89,7 +91,7 @@ var server = http.createServer(function (req, res) {
     } else if (config.statuspage &&
                config.statuspage.readable &&
                config.statuspage.readable.path &&
-               req.url === config.statuspage.readable.path &&
+               req.path === config.statuspage.readable.path &&
                ((in_array('*', config.statuspage.readable.allowedips) ||
                  in_array('0.0.0.0', config.statuspage.readable.allowedips) ||
                  in_array(req.socket.remoteAddress, config.statuspage.readable.allowedips)) ||
@@ -109,6 +111,9 @@ var server = http.createServer(function (req, res) {
             memoryheap = process.memoryUsage();
         memoryheap = Math.round(memoryheap.heapUsed / memoryheap.heapTotal * 100) + '%';
         Object.keys(mounts).forEach(function (mountpoint) {
+            if (!mounts[mountpoint]._) {
+                return;
+            }
             listener += Object.keys(mounts[mountpoint]._.clients).length;
             bytesrcvd += mounts[mountpoint]._.bytesrcvd;
             bytessent += mounts[mountpoint]._.bytessent;
@@ -124,6 +129,9 @@ var server = http.createServer(function (req, res) {
                   'Memory heap: ' + memoryheap + '\n' +
                   'Prebuffer size: ' + prebuffersize + '\n');
         Object.keys(mounts).forEach(function (mountpoint) {
+            if (!mounts[mountpoint]._) {
+                return;
+            }
             res.write('Mount ' + mountpoint + '\n');
             mounts[mountpoint]._.prebuffers.forEach(function (prebuffer) {
                 prebuffersize += prebuffer.length;
@@ -138,7 +146,7 @@ var server = http.createServer(function (req, res) {
     } else if (config.statuspage &&
                config.statuspage.parseable &&
                config.statuspage.parseable.path &&
-               req.url === config.statuspage.parseable.path &&
+               req.path === config.statuspage.parseable.path &&
                ((in_array('*', config.statuspage.parseable.allowedips) ||
                  in_array('0.0.0.0', config.statuspage.parseable.allowedips) ||
                  in_array(req.socket.remoteAddress, config.statuspage.parseable.allowedips)) ||
@@ -153,7 +161,7 @@ var server = http.createServer(function (req, res) {
     } else if (config.statuspage &&
                config.statuspage.inspect &&
                config.statuspage.inspect.path &&
-               req.url === config.statuspage.inspect.path &&
+               req.path === config.statuspage.inspect.path &&
                ((in_array('*', config.statuspage.inspect.allowedips) ||
                  in_array('0.0.0.0', config.statuspage.inspect.allowedips) ||
                  in_array(req.socket.remoteAddress, config.statuspage.inspect.allowedips)) ||
@@ -168,7 +176,7 @@ var server = http.createServer(function (req, res) {
     } else if (config.statuspage &&
                config.statuspage.mountslist &&
                config.statuspage.mountslist.path &&
-               req.url === config.statuspage.mountslist.path &&
+               req.path === config.statuspage.mountslist.path &&
                ((in_array('*', config.statuspage.mountslist.allowedips) ||
                  in_array('0.0.0.0', config.statuspage.mountslist.allowedips) ||
                  in_array(req.socket.remoteAddress, config.statuspage.mountslist.allowedips)) ||
@@ -184,9 +192,9 @@ var server = http.createServer(function (req, res) {
             mountslist.push(mountname);
         });
         res.end(JSON.stringify(mountslist));
-    } else if (mounts[req.url] && mounts[req.url]._) {
+    } else if (mounts[req.path] && mounts[req.path]._) {
         var sumclients = 0,
-            clientrealheaders = mounts[req.url]._.headers,
+            clientrealheaders = mounts[req.path]._.headers,
             clientmetaint = 0,
             clientid = uniqid('', true),
             clientstatus = {};
@@ -197,8 +205,8 @@ var server = http.createServer(function (req, res) {
         });
         if ((!config.maxclients ||
              config.maxclients > sumclients) &&
-            (!mounts[req.url].maxclients ||
-             mounts[req.url].maxclients > Object.keys(mounts[req.url]._.clients).length)) {
+            (!mounts[req.path].maxclients ||
+             mounts[req.path].maxclients > Object.keys(mounts[req.path]._.clients).length)) {
             
             if (req.headers['icy-metadata']) {
                 clientmetaint = clientrealheaders['icy-metaint'];
@@ -209,18 +217,18 @@ var server = http.createServer(function (req, res) {
             res.sendDate = false;
             res.writeHead(200, clientrealheaders);
             clientstatus = {'overflowed': false, 'sent': 0, 'metaint': clientmetaint, 'metaintcycle': 0};
-            var resprebuffers = mounts[req.url]._.prebuffers;
+            var resprebuffers = mounts[req.path]._.prebuffers;
             resprebuffers.forEach(function (chunk) {
                 if (clientstatus.metaint && clientstatus.metaintcycle + chunk.length > clientstatus.metaint) {
                     var remainchunk = new Buffer(chunk.length);
                     chunk.copy(remainchunk);
                     while (clientstatus.metaintcycle + remainchunk.length > clientstatus.metaint) {
                         res.write(remainchunk.slice(0, clientstatus.metaint - clientstatus.metaintcycle));
-                        res.write(mounts[req.url]._.meta);
+                        res.write(mounts[req.path]._.meta);
                         remainchunk = remainchunk.slice(clientstatus.metaint - clientstatus.metaintcycle, remainchunk.length);
                         clientstatus.metaintcycle = 0;
-                        clientstatus.sent += mounts[req.url]._.meta.length;
-                        mounts[req.url]._.bytessent += mounts[req.url]._.meta.length;
+                        clientstatus.sent += mounts[req.path]._.meta.length;
+                        mounts[req.path]._.bytessent += mounts[req.path]._.meta.length;
                     }
                     if (remainchunk.length > 0) {
                         res.write(remainchunk);
@@ -231,11 +239,11 @@ var server = http.createServer(function (req, res) {
                     clientstatus.metaintcycle += chunk.length;
                 }
                 clientstatus.sent += chunk.length;
-                mounts[req.url]._.bytessent += chunk.length;
+                mounts[req.path]._.bytessent += chunk.length;
             });
-            mounts[req.url]._.clients[clientid] = {'status': clientstatus, 'req': req, 'res': res};
+            mounts[req.path]._.clients[clientid] = {'status': clientstatus, 'req': req, 'res': res};
             res.once('close', function () {
-                delete mounts[req.url]._.clients[clientid];
+                delete mounts[req.path]._.clients[clientid];
             });
         } else {
             res.end('No slot available');

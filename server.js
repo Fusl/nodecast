@@ -75,10 +75,16 @@ var passoutgoing = http.createServer(function (req, res) {
                 }
             });
         } else {
-            req.socket.destroy();
+            res.writeHead(401, {
+                'WWW-Authenticate': 'Basic realm="Login please"'
+            });
+            res.end('Unauthorized');
         }
     } else {
-        req.socket.destroy();
+        res.writeHead(401, {
+            'WWW-Authenticate': 'Basic realm="Login please"'
+        });
+        res.end('Unauthorized');
     }
 });
 
@@ -90,17 +96,20 @@ var incoming = function (allowness, c, sourcetype) {
                 c.once('close', function () {
                     source = false;
                 });
+                c.once('error', function (e) {
+                    console.log(e);
+                });
                 c.pipe(stream);
-                c.setTimeout(function () {
+                c.setTimeout(5000, function () {
                     c.destroy();
                 });
                 if (sourcetype === 'shoutcast') {
-                    c.write('OK\n');
+                    c.write('OK2\r\nicy-caps:11\r\n\r\n');
                 }
             });
             source.destroy();
         } else {
-            c.destroy();
+            c.end('invalid password');
         }
     } else {
         if (allowness > 0) {
@@ -108,15 +117,18 @@ var incoming = function (allowness, c, sourcetype) {
             c.once('close', function () {
                 source = false;
             });
+            c.once('error', function (e) {
+                console.log(e);
+            });
             c.pipe(stream);
-            c.setTimeout(function () {
+            c.setTimeout(5000, function () {
                 c.destroy();
             });
             if (sourcetype === 'shoutcast') {
-                c.write('OK\n');
+                c.write('OK2\r\nicy-caps:11\r\n\r\n');
             }
         } else {
-            c.destroy();
+            c.end('invalid password');
         }
     }
 };
