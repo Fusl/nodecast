@@ -7,7 +7,7 @@ nodecast is a high performance live streaming transcoder and stream "muxer"
 Just clone this repositore in a directory of your choice.
 
 ### How to configure?
-```nano *.json``` and edit to your needs.
+```nano configs/*.json``` and edit to your needs.
 
 ### Why multiple files?
 nodecast is a streaming system split into multiple scripts to be able to install each script on a different server (distribute load over multiple host systems). Installing the scripts on different servers also prevents your streaming network from being flooded directly at the transcoder or dj server.

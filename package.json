@@ -11,10 +11,10 @@
         }
     ],
 	"bin": {
-		"nc-server": "./server.js",
-		"nc-playlist": "./playlist.js",
-		"nc-transcoder": "./transcoder.js",
-		"nc-dispatcher": "./dispatcher.js"
+		"nc-server": "./bin/server.js",
+		"nc-playlist": "./bin/playlist.js",
+		"nc-transcoder": "./bin/transcoder.js",
+		"nc-dispatcher": "./bin/dispatcher.js"
 	},
     "repository": {
         "type": "git",
@@ -31,7 +31,9 @@
         "aacplus",
         "livestream",
         "webradio",
-        "radio"
+        "radio",
+		"station",
+		"music"
     ],
     "license": "GPLv3"
 }

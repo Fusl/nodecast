@@ -1,4 +1,2 @@
-/transcoder.json
-/playlist.json
-/dispatcher.json
-/server.json
+/configs
+*.komodoproject

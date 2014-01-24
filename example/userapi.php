@@ -36,4 +36,4 @@ if(isset($users[$username]["cond"]) && !isset($users[$username]["cond"])) {
     die("2"); // If a condition is set and the condition is met, exit with allowness 2, which means, allow to kick current dj and stream
 }
 
-die("1"); // If none of the above conditions were met, exit wich allowness 1, which means, allow to connect to stream
+die("1"); // If none of the above conditions were met, exit with allowness 1, which means, allow to connect to stream
