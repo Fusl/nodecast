@@ -1,7 +1,7 @@
 {
     "name": "nodecast.io",
     "preferGlobal": true,
-    "version": "0.1.5",
+    "version": "0.1.6",
     "author": "Fusl <root@hallowe.lt>",
     "description": "nodecast is a high performance shoutcast-/icecast-like server, playlist, stream transcoder and dispatcher",
     "contributors": [
