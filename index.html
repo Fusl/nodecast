@@ -1,0 +1,76 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>Nodecast by Fusl</title>
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+    <script src="javascripts/respond.js"></script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <!--[if lt IE 8]>
+    <link rel="stylesheet" href="stylesheets/ie.css">
+    <![endif]-->
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+
+  </head>
+  <body>
+      <div id="header">
+        <nav>
+          <li class="fork"><a href="https://github.com/Fusl/nodecast">View On GitHub</a></li>
+          <li class="downloads"><a href="https://github.com/Fusl/nodecast/zipball/master">ZIP</a></li>
+          <li class="downloads"><a href="https://github.com/Fusl/nodecast/tarball/master">TAR</a></li>
+          <li class="title">DOWNLOADS</li>
+        </nav>
+      </div><!-- end header -->
+
+    <div class="wrapper">
+
+      <section>
+        <div id="title">
+          <h1>Nodecast</h1>
+          <p>nodecast is a high performance shoutcast-/icecast-like server, playlist, stream transcoder and dispatcher</p>
+          <hr>
+          <span class="credits left">Project maintained by <a href="https://github.com/Fusl">Fusl</a></span>
+          <span class="credits right">Hosted on GitHub Pages &mdash; Theme by <a href="https://twitter.com/michigangraham">mattgraham</a></span>
+        </div>
+
+        <h1>
+<a name="nodecast" class="anchor" href="#nodecast"><span class="octicon octicon-link"></span></a>nodecast</h1>
+
+<p>nodecast is a high performance live streaming transcoder and stream "muxer"</p>
+
+<h3>
+<a name="how-to-install" class="anchor" href="#how-to-install"><span class="octicon octicon-link"></span></a>How to install?</h3>
+
+<p>Just clone this repositore in a directory of your choice.</p>
+
+<h3>
+<a name="how-to-configure" class="anchor" href="#how-to-configure"><span class="octicon octicon-link"></span></a>How to configure?</h3>
+
+<p><code>nano configs/*.json</code> and edit to your needs. The syntax for these configuration files is <a href="http://json.org/" title="JSON website">JSON</a>. If you don't know how to write JSON files, <a href="https://github.com/Fusl/nodecast/issues">open a new issue ticket</a>, completely describe what you need and we will try to build your configuration which fits your needs.</p>
+
+<h3>
+<a name="why-multiple-files" class="anchor" href="#why-multiple-files"><span class="octicon octicon-link"></span></a>Why multiple files?</h3>
+
+<p>nodecast is a streaming system split into multiple scripts to be able to install each script on a different server (distribute load over multiple host systems). Installing the scripts on different servers also prevents your streaming network from being flooded directly at the transcoder or dj server.</p>
+
+<h3>
+<a name="how-to-run" class="anchor" href="#how-to-run"><span class="octicon octicon-link"></span></a>How to run?</h3>
+
+<p>After configuring all the scripts (.json files) you can fire up the scripts by running <code>./scriptname.js &lt; scriptname.json</code> (e.g. <code>./transcoder.js &lt; transcoder.json</code>).</p>
+
+<h3>
+<a name="bugs" class="anchor" href="#bugs"><span class="octicon octicon-link"></span></a>Bugs?</h3>
+
+<p>If we find bugs, we are gonna fix them. But we don't always find bugs and therefor need your help: If you find any type of bug (memory leak, high cpu usage, weird behaviour when doing something special, etc.), please open a new issue ticket.</p>
+      </section>
+
+    </div>
+    <!--[if !IE]><script>fixScale(document);</script><![endif]-->
+    
+  </body>
+</html>
