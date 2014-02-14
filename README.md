@@ -4,7 +4,7 @@ nodecast
 nodecast is a high performance live streaming transcoder and stream "muxer"
 
 ### How to install?
-Just clone this repositore in a directory of your choice.
+Just clone this repository in a directory of your choice. (```git clone https://github.com/Fusl/nodecast```)
 
 ### How to configure?
 ```nano configs/*.json``` and edit to your needs. The syntax for these configuration files is [JSON](http://json.org/ "JSON website"). If you don't know how to write JSON files, [open a new issue ticket](https://github.com/Fusl/nodecast/issues), completely describe what you need and we will try to build your configuration which fits your needs.
