@@ -394,12 +394,18 @@ var init = function () {
     }, 1000);
 };
 
-var stdin = '';
-process.stdin.on('data', function (chunk) {
-    stdin += chunk;
-});
-process.stdin.on('close', function () {
-    parseandsetconfig(stdin, function () {
+if (process.argv[2]) {
+    parseandsetconfig(fs.readFileSync(process.argv[2]), function () {
         init();
     });
-});
+} else {
+    var stdin = '';
+    process.stdin.on('data', function (chunk) {
+        stdin += chunk;
+    });
+    process.stdin.on('close', function () {
+        parseandsetconfig(stdin, function () {
+            init();
+        });
+    });
+}

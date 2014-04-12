@@ -177,12 +177,8 @@ var init = function () {
     }
 };
 
-var stdin = '';
-process.stdin.on('data', function (chunk) {
-    stdin += chunk;
-});
-process.stdin.once('close', function () {
-    parseandsetconfig(stdin, function () {
+if (process.argv[2]) {
+    parseandsetconfig(fs.readFileSync(process.argv[2]), function () {
         Object.keys(playlists).forEach(function (playlistkey) {
             Object.keys(playlists[playlistkey].calendarmaps).forEach(function (calendarmapkey) {
                 if (calendarmapkey !== 'default' && calendarmapkey !== 'fallback') {
@@ -194,4 +190,23 @@ process.stdin.once('close', function () {
         });
         init();
     });
-});
+} else {
+    var stdin = '';
+    process.stdin.on('data', function (chunk) {
+        stdin += chunk;
+    });
+    process.stdin.once('close', function () {
+        parseandsetconfig(stdin, function () {
+            Object.keys(playlists).forEach(function (playlistkey) {
+                Object.keys(playlists[playlistkey].calendarmaps).forEach(function (calendarmapkey) {
+                    if (calendarmapkey !== 'default' && calendarmapkey !== 'fallback') {
+                        var calendarmapvalue = playlists[playlistkey].calendarmaps[calendarmapkey];
+                        delete playlists[playlistkey].calendarmaps[calendarmapkey];
+                        playlists[playlistkey].calendarmaps[parseInt(calendarmapkey, 0)] = calendarmapvalue;
+                    }
+                });
+            });
+            init();
+        });
+    });
+}

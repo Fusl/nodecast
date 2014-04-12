@@ -21,14 +21,13 @@ var child_process = functions.child_process;
 var uniqid = functions.uniqid;
 var util = functions.util;
 var log = functions.log;
+var fs = functions.fs;
 var Streampass = functions.streampass;
 
 var mountstreamsin = {};
 var mountstreamsout = {};
 
 var mount = function (mountpoint) {    
-    log('Spawning mount(' + mountpoint + ')');
-    
     mounts[mountpoint]._ = {};
     mounts[mountpoint]._.clients = {};
     mounts[mountpoint]._.source = false;
@@ -127,6 +126,7 @@ var mount = function (mountpoint) {
     proc.stderr.once('error', function (e) {});
     
     if (mounts[mountpoint].debug === true || config.global.debug === true) {
+        console.log('\'' + options.join('\' \'') + '\'');
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
@@ -227,6 +227,7 @@ var source = function (sourcename, callbacktodo) {
     proc.stderr.once('error', function (e) {});
     
     if (sources[sourcename].debug === true || config.global.debug === true) {
+        console.log('\'' + options.join('\' \'') + '\'');
         proc.stderr.on('data', function (chunk) {
             process.stderr.write(chunk);
         });
@@ -499,7 +500,6 @@ var init = function () {
     
     // Loop through all mountpoints and set the converterpath if not set (correctly)
     Object.keys(mounts).forEach(function (mountpoint) {
-        log('Spawning mount(' + mountpoint + ')');
         if (typeof mounts[mountpoint].converterpath !== 'string' || mounts[mountpoint].converterpath.trim() === '') {
             if (typeof config.global.converterpath === 'string' && config.global.converterpath.trim() !== '') {
                 mounts[mountpoint].converterpath = config.global.converterpath;
@@ -507,6 +507,7 @@ var init = function () {
                 mounts[mountpoint].converterpath = '/usr/bin/ffmpeg';
             }
         }
+        log('Spawning mount(' + mountpoint + ')');
         mount(mountpoint);
     });
     
@@ -538,12 +539,18 @@ var init = function () {
 };
 
 // Read stdin, fill a buffer and submit the buffer to parseandsetconfig when stdin is closed. Callback: Call initialize function
-var stdin = '';
-process.stdin.on('data', function (chunk) {
-    stdin += chunk;
-});
-process.stdin.on('close', function () {
-    parseandsetconfig(stdin, function () {
+if (process.argv[2]) {
+    parseandsetconfig(fs.readFileSync(process.argv[2]), function () {
         init();
     });
-});
+} else {
+    var stdin = '';
+    process.stdin.on('data', function (chunk) {
+        stdin += chunk;
+    });
+    process.stdin.on('close', function () {
+        parseandsetconfig(stdin, function () {
+            init();
+        });
+    });
+}

@@ -245,16 +245,23 @@ var init = function () {
     passoutgoing.listen(config.server.listenport, config.server.listenip);
 };
 
-var stdin = '';
-process.stdin.on('data', function (chunk) {
-    stdin += chunk;
-});
-process.stdin.on('close', function () {
-    parseandsetconfig(stdin, function () {
+if (process.argv[2]) {
+    parseandsetconfig(fs.readFileSync(process.argv[2]), function () {
         config.userapi = url.parse(config.userapi, true);
         init();
     });
-});
+} else {
+    var stdin = '';
+    process.stdin.on('data', function (chunk) {
+        stdin += chunk;
+    });
+    process.stdin.on('close', function () {
+        parseandsetconfig(stdin, function () {
+            config.userapi = url.parse(config.userapi, true);
+            init();
+        });
+    });
+}
 
 /*
 Examples from edcast:
