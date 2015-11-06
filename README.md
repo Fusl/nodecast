@@ -4,7 +4,7 @@ nodecast
 nodecast is a high performance live streaming transcoder and stream "muxer"
 
 ### Important notice
-The current version of nodecast is currently abandoned. I'm currently working on a newer, more stable and modern version and will publish it here as soon as I can.
+The current version of nodecast is abandoned. I'm at this time working on a newer, more stable and modern version and will publish it here as soon as I can.
 
 ### How to install?
 Just clone this repository in a directory of your choice. (```git clone https://github.com/Fusl/nodecast```)
